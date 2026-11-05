@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>像素置乱器 · 可逆的图像打乱</title>
+<style>
+  :root{
+    --bg:#f5f5f7; --card:#fff; --line:#e7e7ee; --line-2:#f0f0f5;
+    --text:#17171c; --muted:#76768b; --accent:#5a5ad6; --accent-2:#7b5cf0;
+    --accent-soft:#eeeefc; --good:#158f5c; --bad:#cf3b3b;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  [hidden]{display:none !important}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 420px at 12% -8%, #ecebff 0%, rgba(236,235,255,0) 62%),
+      radial-gradient(760px 380px at 92% 0%, #e6f4f2 0%, rgba(230,244,242,0) 58%),
+      var(--bg);
+    color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    padding:36px 20px 64px;
+  }
+  .app{max-width:980px;margin:0 auto}
+
+  /* ---------- 头部 ---------- */
+  .hd{display:flex;gap:16px;align-items:center;margin-bottom:26px}
+  .logo{
+    width:46px;height:46px;border-radius:13px;flex:0 0 auto;
+    background:linear-gradient(145deg,#6a6ae6,#9d5cf0);
+    box-shadow:0 6px 18px -6px rgba(90,90,214,.6), inset 0 1px 0 rgba(255,255,255,.4);
+    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+    gap:2px;padding:9px;
+  }
+  .logo i{border-radius:1.5px;background:rgba(255,255,255,.92)}
+  .logo i:nth-child(1),.logo i:nth-child(5),.logo i:nth-child(9){background:rgba(255,255,255,.45)}
+  .logo i:nth-child(3),.logo i:nth-child(7){background:rgba(255,255,255,.7)}
+  h1{font-size:22px;letter-spacing:-.3px;margin:0 0 3px;font-weight:680}
+  .sub{margin:0;color:var(--muted);font-size:13.5px}
+
+  /* ---------- 标签页 ---------- */
+  .tabs{
+    display:inline-flex;gap:3px;padding:3px;border-radius:12px;
+    background:#ebebf2;margin-bottom:18px;
+  }
+  .tab{
+    appearance:none;border:0;background:transparent;color:var(--muted);
+    font:inherit;font-size:14px;font-weight:560;padding:7px 22px;border-radius:9px;cursor:pointer;
+    transition:.18s;
+  }
+  .tab:hover{color:var(--text)}
+  .tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(20,20,50,.09)}
+
+  /* ---------- 卡片 ---------- */
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:18px;
+    box-shadow:0 1px 2px rgba(20,20,50,.04),0 18px 40px -28px rgba(20,20,50,.25);
+    padding:22px;
+  }
+
+  /* ---------- 拖放区 ---------- */
+  .drop{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    border:1.5px dashed #d3d3e0;border-radius:14px;background:#fafaff;
+    padding:30px 20px;cursor:pointer;text-align:center;transition:.18s;
+  }
+  .drop:hover{border-color:#b9b9e0;background:#f7f7ff}
+  .drop.over{border-color:var(--accent);background:#f2f1ff;transform:scale(.997)}
+  .drop svg{width:30px;height:30px;stroke:#a3a3bd;margin-bottom:2px}
+  .drop strong{font-weight:600}
+  .drop .link{color:var(--accent);font-weight:560}
+  .drop small{color:#9a9aae;font-size:12.5px}
+  .drop.compact{padding:14px 16px;flex-direction:row;gap:10px;justify-content:flex-start;text-align:left}
+  .drop.compact svg{width:18px;height:18px;margin:0}
+  .drop.compact small{display:none}
+
+  /* ---------- 预览 ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0 4px}
+  @media (max-width:720px){.grid2{grid-template-columns:1fr}}
+  .prev{margin:0}
+  .ph{
+    position:relative;height:236px;border-radius:12px;overflow:hidden;
+    border:1px solid var(--line);background:#f3f3f7;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .ph img{max-width:100%;max-height:100%;display:block;image-rendering:auto}
+  .ph.checker{
+    background-image:
+      linear-gradient(45deg,#ececf2 25%,transparent 25%,transparent 75%,#ececf2 75%),
+      linear-gradient(45deg,#ececf2 25%,transparent 25%,transparent 75%,#ececf2 75%);
+    background-size:16px 16px;background-position:0 0,8px 8px;background-color:#fff;
+  }
+  .ph .empty{color:#a8a8bb;font-size:13px;position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+  figcaption{margin-top:7px;font-size:12.5px;color:var(--muted);display:flex;gap:8px;justify-content:space-between}
+  figcaption b{font-weight:600;color:#3a3a4d;font-size:12.5px}
+
+  /* ---------- 表单 ---------- */
+  .row{display:flex;gap:14px;align-items:flex-end;margin-top:16px;flex-wrap:wrap}
+  .field{flex:1 1 320px;display:flex;flex-direction:column;gap:6px}
+  .field>span{font-size:12.5px;color:var(--muted);font-weight:560}
+  input[type=password],input[type=text],textarea{
+    width:100%;font:inherit;font-size:14px;color:var(--text);
+    border:1px solid var(--line);border-radius:10px;background:#fbfbfd;
+    padding:9px 12px;outline:none;transition:.16s;
+  }
+  input:focus,textarea:focus{border-color:#b9b9ea;background:#fff;box-shadow:0 0 0 3px rgba(90,90,214,.1)}
+  .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:#55556b;padding-bottom:9px;cursor:pointer;user-select:none;white-space:nowrap}
+  .chk input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+
+  /* ---------- 比例滑杆 ---------- */
+  .ratio{margin-top:16px;background:#fafafd;border:1px solid var(--line-2);border-radius:12px;padding:12px 14px 11px}
+  .ratio-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .ratio-head>span{font-size:12.5px;color:var(--muted);font-weight:560}
+  .ratio-head b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--accent);letter-spacing:-.2px}
+  .ratio input[type=range]{
+    -webkit-appearance:none;appearance:none;width:100%;height:20px;background:transparent;
+    accent-color:var(--accent);cursor:pointer;display:block;
+  }
+  .ratio input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:99px;background:#e4e4ef}
+  .ratio input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:#fff;
+    border:2px solid var(--accent);margin-top:-5.5px;box-shadow:0 1px 4px rgba(40,40,90,.25);
+    transition:transform .12s;
+  }
+  .ratio input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.08)}
+  .ratio small{display:block;margin-top:5px;color:#8e8ea4;font-size:12px}
+
+  /* ---------- 按钮 ---------- */
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .btn{
+    appearance:none;font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+    border-radius:10px;padding:10px 20px;border:1px solid transparent;transition:.16s;
+    display:inline-flex;align-items:center;gap:7px;
+  }
+  .btn.primary{
+    color:#fff;background:linear-gradient(180deg,#6666e2,#5a5ad6);
+    box-shadow:0 1px 2px rgba(50,50,120,.25),0 8px 20px -10px rgba(90,90,214,.8);
+  }
+  .btn.primary:hover{background:linear-gradient(180deg,#6d6de8,#5f5fdc)}
+  .btn.primary:disabled{opacity:.55;cursor:default;box-shadow:none}
+  .btn.ghost{background:#fff;border-color:var(--line);color:#4a4a60}
+  .btn.ghost:hover{background:#fafafd;border-color:#d6d6e2}
+  .btn.small{padding:6px 12px;font-size:12.5px;border-radius:8px}
+
+  /* ---------- 进度 ---------- */
+  .progress{display:flex;align-items:center;gap:12px;margin-top:16px}
+  .bar{flex:1;height:6px;border-radius:99px;background:#ececf3;overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#6a6ae6,#9d5cf0);transition:width .18s ease}
+  .pct{font-family:var(--mono);font-size:11.5px;color:var(--muted);min-width:82px;text-align:right;font-variant-numeric:tabular-nums}
+
+  /* ---------- 统计 ---------- */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+  @media (max-width:720px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .stat{background:#fafafd;border:1px solid var(--line-2);border-radius:11px;padding:11px 13px}
+  .stat span{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .stat b{font-size:15px;font-weight:650;letter-spacing:-.2px;font-variant-numeric:tabular-nums}
+  .stat b.good{color:var(--good)}
+  .stat b.bad{color:var(--bad)}
+
+  /* ---------- 密钥串 ---------- */
+  .keybox{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#fbfbfd;padding:12px 14px}
+  .keybox .kh{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+  .keybox .kh>span{font-size:12.5px;color:var(--muted);font-weight:560}
+  .keybox code{
+    display:block;font-family:var(--mono);font-size:11px;line-height:1.55;color:#4c4c63;
+    word-break:break-all;max-height:88px;overflow:auto;background:#fff;border:1px solid var(--line-2);
+    border-radius:8px;padding:8px 10px;
+  }
+  textarea{resize:vertical;min-height:64px;font-family:var(--mono);font-size:11.5px}
+
+  .warn{
+    margin-top:14px;padding:10px 13px;border-radius:10px;font-size:12.5px;
+    background:#fff8ec;border:1px solid #f6e3c2;color:#8a6320;
+  }
+
+  /* ---------- 说明 ---------- */
+  .howto{margin-top:18px;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}
+  .howto>summary{
+    cursor:pointer;padding:15px 20px;font-weight:600;font-size:14px;list-style:none;
+    display:flex;align-items:center;justify-content:space-between;color:#30303f;
+  }
+  .howto>summary::-webkit-details-marker{display:none}
+  .howto>summary::after{content:"＋";color:#a5a5ba;font-weight:400}
+  .howto[open]>summary::after{content:"−"}
+  .howto .body{padding:0 20px 20px;border-top:1px solid var(--line-2);font-size:13.5px;color:#494960}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 4px}
+  @media (max-width:720px){.steps{grid-template-columns:1fr}}
+  .step{background:#fafafd;border:1px solid var(--line-2);border-radius:12px;padding:13px 15px}
+  .step em{display:block;font-style:normal;font-family:var(--mono);font-size:11px;color:var(--accent);margin-bottom:4px}
+  .step b{display:block;font-size:13.5px;margin-bottom:3px}
+  .step p{margin:0;font-size:12.5px;color:#6d6d84;line-height:1.65}
+  .howto ul{margin:14px 0 0;padding-left:18px;color:#6d6d84;font-size:12.5px;line-height:1.8}
+  .howto ul b{color:#494960}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:30px;transform:translate(-50%,16px);
+    background:#23232e;color:#fff;font-size:13.5px;padding:10px 18px;border-radius:11px;
+    box-shadow:0 12px 30px -12px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.22s;
+    max-width:min(90vw,560px);text-align:center;z-index:50;
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0)}
+  .toast.err{background:#b3302f}
+  .toast.ok{background:#148a58}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="hd">
+    <div class="logo"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div>
+      <h1>像素置乱器</h1>
+      <p class="sub">把像素搅成噪声、搅多少由你定 —— 而且随时能逐像素还原。</p>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="enc">加密</button>
+    <button class="tab" data-tab="dec">还原</button>
+  </nav>
+
+  <!-- ================= 加密 ================= -->
+  <section id="tab-enc" class="card">
+    <div class="drop" id="encDrop" role="button" tabindex="0">
+      <input type="file" id="encFile" accept="image/*" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/>
+        <path d="M21 15.5l-4.5-4.5L7 20.5"/>
+      </svg>
+      <div><strong>拖入图片</strong> 或 <span class="link">点击选择</span> · 也可直接 ⌘V 粘贴</div>
+      <small>JPG / PNG / WebP / GIF / BMP · 输出为无损 PNG</small>
+    </div>
+
+    <div id="encStage" hidden>
+      <div class="grid2">
+        <figure class="prev">
+          <div class="ph"><img id="encImgSrc" alt="原图"></div>
+          <figcaption><b>原图</b><span id="encMeta"></span></figcaption>
+        </figure>
+        <figure class="prev">
+          <div class="ph checker">
+            <img id="encImgOut" alt="置乱结果">
+            <div class="empty" id="encOutEmpty">待生成</div>
+          </div>
+          <figcaption><b>置乱结果</b><span id="encOutMeta"></span></figcaption>
+        </figure>
+      </div>
+
+      <div class="ratio">
+        <div class="ratio-head">
+          <span>打乱强度</span>
+          <b id="encRatioVal">100%</b>
+        </div>
+        <input type="range" id="encRatio" min="1" max="100" step="1" value="100">
+        <small id="encRatioHint">几乎全毁：肉眼看与 100% 没区别 · 实际约 100% 像素会被改写</small>
+      </div>
+
+      <div class="row">
+        <label class="field">
+          <span>口令（可选）</span>
+          <input type="password" id="encPw" placeholder="留空：密钥写进图里，任何人都能还原" autocomplete="off">
+        </label>
+        <label class="chk"><input type="checkbox" id="encVerify" checked> 生成后校验可逆性</label>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="encRun">生成置乱图</button>
+        <button class="btn ghost" id="encDown" hidden>下载 PNG</button>
+        <button class="btn ghost" id="encAgain" hidden>新窗口查看</button>
+        <button class="btn ghost" id="encReset">换一张</button>
+      </div>
+
+      <div class="progress" id="encProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
+      <div class="stats" id="encStats" hidden></div>
+
+      <div class="keybox" id="encKeyBox" hidden>
+        <div class="kh">
+          <span>密钥串（已写入图片元数据，可另存备份）</span>
+          <button class="btn ghost small" id="encCopy">复制</button>
+        </div>
+        <code id="encKeyStr"></code>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 还原 ================= -->
+  <section id="tab-dec" class="card" hidden>
+    <div class="drop" id="decDrop" role="button" tabindex="0">
+      <input type="file" id="decFile" accept=".png,image/png" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 16V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/>
+        <path d="M4 15v3.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V15"/>
+      </svg>
+      <div><strong>拖入置乱图</strong> 或 <span class="link">点击选择</span> · 也可直接 ⌘V 粘贴</div>
+      <small>请使用本工具生成的 PNG（元数据必须完整）</small>
+    </div>
+
+    <div id="decStage" hidden>
+      <div class="grid2">
+        <figure class="prev">
+          <div class="ph checker"><img id="decImgSrc" alt="置乱图"></div>
+          <figcaption><b>置乱图</b><span id="decMeta"></span></figcaption>
+        </figure>
+        <figure class="prev">
+          <div class="ph">
+            <img id="decImgOut" alt="还原结果">
+            <div class="empty" id="decOutEmpty">待还原</div>
+          </div>
+          <figcaption><b>还原结果</b><span></span></figcaption>
+        </figure>
+      </div>
+
+      <div class="row" id="decPwRow" hidden>
+        <label class="field">
+          <span>口令</span>
+          <input type="password" id="decPw" placeholder="加密时设置的口令" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="warn" id="decNoMeta" hidden>
+        没有找到内嵌元数据（可能被重新压缩/截图过）。请把加密时备份的密钥串粘贴到下面。
+      </div>
+      <div class="row" id="decKeyRow" hidden>
+        <label class="field">
+          <span>密钥串</span>
+          <textarea id="decKeyInput" placeholder="粘贴以 eyJ 开头的密钥串"></textarea>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" id="decRun">开始还原</button>
+        <button class="btn ghost" id="decDown" hidden>下载 PNG</button>
+        <button class="btn ghost" id="decReset">换一张</button>
+      </div>
+
+      <div class="progress" id="decProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
+      <div class="stats" id="decStats" hidden></div>
+    </div>
+  </section>
+
+  <details class="howto">
+    <summary>它到底做了什么？</summary>
+    <div class="body">
+      <div class="steps">
+        <div class="step">
+          <em>STEP 01</em>
+          <b>位置置换</b>
+          <p>用密钥派生的伪随机序列做 3 轮交换，把像素搬到完全不同、看似随机的位置。空间结构在这一步就死了。</p>
+        </div>
+        <div class="step">
+          <em>STEP 02</em>
+          <b>逐像素异或</b>
+          <p>每个像素的 RGB(A) 再与密钥流派生的随机字节逐位异或。颜色、直方图、边缘统计全部归一化，看上去就是电视雪花。</p>
+        </div>
+        <div class="step">
+          <em>STEP 03</em>
+          <b>逆向还原</b>
+          <p>两步都是双射（一一对应），所以整体严格可逆：先异或、再按倒序执行同样的交换，就能逐字节复原。</p>
+        </div>
+      </div>
+      <ul>
+        <li><b>打乱强度是什么？</b> 强度越低，发起"搬家"的像素越少（密度取强度的平方），画面只是局部破碎、轮廓还在；强度越高，几乎每个像素都参与，整幅图彻底变成噪声。关键点：参与搬家的像素不限对手，它会跟全图任意位置的像素换色，所以<strong>不存在"整块原样保留"的像素</strong> —— 这正是早期版本 95% 还能看出轮廓的原因（那 5% 原样像素被眼睛拼成了一张模糊的原图）。</li>
+        <li><b>为什么可逆？</b> 交换的逆是交换本身，异或的逆是异或本身。加密与解密用的是同一条密钥流，只是执行顺序相反。</li>
+        <li><b>密钥从哪来？</b> 口令 + 随机盐 → PBKDF2-HMAC-SHA256 20 万次迭代 → 32 字节主密钥。留空口令时改用一次性随机密钥，写进图片元数据，所以那张图自己就能还原。</li>
+        <li><b>为什么输出必须 PNG？</b> JPG 是有损压缩，重编码会把密文改掉一个 bit，还原就再也对不上了。本工具自己写 PNG（8bit RGBA + 非压缩数据块），避开浏览器 canvas 对半透明像素的预乘舍入误差。</li>
+        <li><b>能防谁？</b> 能防"随手看一眼"——所有人看到的都只是噪声。设了口令后，没有口令连量化分析都无从下手。但它不是经过审计的加密方案，别拿它存真正机密的东西。原图的 EXIF、ICC 等元数据在编码时会丢失，只有像素被完整保留。</li>
+      </ul>
+    </div>
+  </details>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+ * core.js — 像素置乱核心算法（纯 JS，零依赖）
+ * ---------------------------------------------------------------
+ * 思路：
+ *   1. 位置置换（Permutation）：用密钥派生的伪随机流做多轮随机交换，
+ *      把每个像素搬到完全不同的位置 —— 破坏所有空间结构。
+ *   2. 值置换（Keystream XOR）：每个像素的 RGB(A) 与密钥流派生的随机
+ *      字节逐位异或 —— 摧毁颜色分布与直方图。
+ *   3. 两步都是"双射"，所以整体可逆；解密按相反顺序执行即可。
+ * 密钥：口令 + 随机盐 → PBKDF2-HMAC-SHA256 → 32 字节主密钥。
+ * 元数据：写入 PNG 的 tEXt 块，随图片一起走。
+ * ===================================================================== */
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  if (root) root.WBEnc = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  const VERSION = 2;   // 2 = 起跳式打乱（对手不限选区，强度→密度取平方）
+  const PERM_ROUNDS = 3;
+  const PBKDF2_ITER = 200000;
+  const PBKDF2_ITER_JS = 80000;
+  const SALT_LEN = 16;
+  const KEY_LEN = 32;
+
+  /* ------------------------------ 工具 ------------------------------ */
+  function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+  function rotl(x, n) { return (x << n) | (x >>> (32 - n)); }
+
+  function concat(a, b) {
+    const out = new Uint8Array(a.length + b.length);
+    out.set(a, 0); out.set(b, a.length);
+    return out;
+  }
+
+  function readU32BE(u8, o) {
+    return ((u8[o] << 24) | (u8[o + 1] << 16) | (u8[o + 2] << 8) | u8[o + 3]) >>> 0;
+  }
+
+  function toHex(u8) {
+    let s = '';
+    for (let i = 0; i < u8.length; i++) s += u8[i].toString(16).padStart(2, '0');
+    return s;
+  }
+
+  /* ----------------------------- SHA-256 ---------------------------- */
+  const SHA_K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+  ]);
+
+  function sha256(input) {
+    const msg = input instanceof Uint8Array ? input : new Uint8Array(input);
+    const len = msg.length;
+    const bitHi = Math.floor(len * 8 / 4294967296);
+    const bitLo = (len * 8) >>> 0;
+    const total = (((len + 9) + 63) >> 6) << 6;
+    const buf = new Uint8Array(total);
+    buf.set(msg, 0);
+    buf[len] = 0x80;
+    buf[total - 8] = (bitHi >>> 24) & 255;
+    buf[total - 7] = (bitHi >>> 16) & 255;
+    buf[total - 6] = (bitHi >>> 8) & 255;
+    buf[total - 5] = bitHi & 255;
+    buf[total - 4] = (bitLo >>> 24) & 255;
+    buf[total - 3] = (bitLo >>> 16) & 255;
+    buf[total - 2] = (bitLo >>> 8) & 255;
+    buf[total - 1] = bitLo & 255;
+
+    const H = new Uint32Array([
+      0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+      0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    ]);
+    const W = new Uint32Array(64);
+
+    for (let off = 0; off < total; off += 64) {
+      for (let i = 0; i < 16; i++) {
+        const p = off + i * 4;
+        W[i] = ((buf[p] << 24) | (buf[p + 1] << 16) | (buf[p + 2] << 8) | buf[p + 3]) >>> 0;
+      }
+      for (let i = 16; i < 64; i++) {
+        const w15 = W[i - 15], w2 = W[i - 2];
+        const s0 = rotr(w15, 7) ^ rotr(w15, 18) ^ (w15 >>> 3);
+        const s1 = rotr(w2, 17) ^ rotr(w2, 19) ^ (w2 >>> 10);
+        W[i] = (W[i - 16] + s0 + W[i - 7] + s1) >>> 0;
+      }
+      let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const t1 = (h + S1 + ch + SHA_K[i] + W[i]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const t2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e;
+        e = (d + t1) >>> 0;
+        d = c; c = b; b = a;
+        a = (t1 + t2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0;
+      H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0;
+      H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+
+    const out = new Uint8Array(32);
+    for (let i = 0; i < 8; i++) {
+      out[i * 4] = (H[i] >>> 24) & 255;
+      out[i * 4 + 1] = (H[i] >>> 16) & 255;
+      out[i * 4 + 2] = (H[i] >>> 8) & 255;
+      out[i * 4 + 3] = H[i] & 255;
+    }
+    return out;
+  }
+
+  function hmacSha256(key, msg) {
+    let k = key instanceof Uint8Array ? key : new Uint8Array(key);
+    if (k.length > 64) k = sha256(k);
+    const pad = new Uint8Array(64);
+    pad.set(k, 0);
+    const ipad = new Uint8Array(64), opad = new Uint8Array(64);
+    for (let i = 0; i < 64; i++) { ipad[i] = pad[i] ^ 0x36; opad[i] = pad[i] ^ 0x5c; }
+    return sha256(concat(opad, sha256(concat(ipad, msg))));
+  }
+
+  function pbkdf2Js(password, salt, iterations) {
+    const pw = password instanceof Uint8Array ? password : new Uint8Array(password);
+    const block1 = concat(salt, new Uint8Array([0, 0, 0, 1]));
+    let u = hmacSha256(pw, block1);
+    const t = u.slice();
+    for (let i = 1; i < iterations; i++) {
+      u = hmacSha256(pw, u);
+      for (let j = 0; j < 32; j++) t[j] ^= u[j];
+    }
+    return t;
+  }
+
+  const humanBytes = (n) => {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(2) + ' MB';
+  };
+
+  /* --------------------------- 密钥派生 ---------------------------- */
+  async function deriveKey(password, salt, iterations, onProgress) {
+    const enc = new TextEncoder();
+    const pwBytes = enc.encode(password || '');
+    const g = typeof globalThis !== 'undefined' ? globalThis : null;
+    if (g && g.crypto && g.crypto.subtle && g.crypto.subtle.importKey) {
+      const km = await g.crypto.subtle.importKey('raw', pwBytes, 'PBKDF2', false, ['deriveBits']);
+      const bits = await g.crypto.subtle.deriveBits(
+        { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' }, km, 256
+      );
+      if (onProgress) onProgress(1);
+      return new Uint8Array(bits);
+    }
+    // 退化路径：没有 WebCrypto 时用纯 JS 实现（口令迭代次数略降以保速度）
+    if (onProgress) onProgress(0.15);
+    const k = pbkdf2Js(pwBytes, salt, iterations);
+    if (onProgress) onProgress(1);
+    return k;
+  }
+
+  /* --------------------------- 伪随机流 ---------------------------- */
+  // xoshiro128** —— 用主密钥 + 域标签派生种子，快且质量足够
+  function seedWords(key, domain) {
+    const tag = new Uint8Array(4);
+    tag[0] = (domain >>> 24) & 255; tag[1] = (domain >>> 16) & 255;
+    tag[2] = (domain >>> 8) & 255; tag[3] = domain & 255;
+    const h = sha256(concat(key, tag));
+    return [readU32BE(h, 0), readU32BE(h, 4), readU32BE(h, 8), readU32BE(h, 12)];
+  }
+
+  function makeRng(key, domain) {
+    let [x, y, z, w] = seedWords(key, domain);
+    if ((x | y | z | w) === 0) x = 0x9e3779b9;
+    return function next() {
+      const result = Math.imul(rotl(Math.imul(y, 5) >>> 0, 7) >>> 0, 9) >>> 0;
+      const t = (y << 9) >>> 0;
+      z = (z ^ x) >>> 0;
+      w = (w ^ y) >>> 0;
+      y = (y ^ z) >>> 0;
+      x = (x ^ w) >>> 0;
+      z = (z ^ t) >>> 0;
+      w = rotl(w, 11) >>> 0;
+      return result;
+    };
+  }
+
+  const DOMAIN_XOR = 0x584F5200;   // "XOR"
+  const DOMAIN_PERM = 0x50455200;  // "PER"
+
+  const yieldTick = () => new Promise((r) => setTimeout(r, 0));
+
+  /* -------------------------- 位置置换 ----------------------------- */
+  // 每一轮：i 走遍 [0,N)，与键控哈希给出的随机位置 j 交换。
+  // 关键点：交换序列是 i 的纯函数（不依赖中间状态），
+  // 所以逆变换只需把 i 倒着走一遍、轮次倒序执行，即可精确复原。
+  function mix32(x) {
+    x = (x ^ (x >>> 16)) >>> 0;
+    x = Math.imul(x, 0x7feb352d) >>> 0;
+    x = (x ^ (x >>> 15)) >>> 0;
+    x = Math.imul(x, 0x846ca68b) >>> 0;
+    x = (x ^ (x >>> 16)) >>> 0;
+    return x;
+  }
+
+  function swapIndexOf(s0, s1, i) {
+    let h = mix32((i + s0) >>> 0);
+    h = mix32((h ^ s1) >>> 0);
+    return h;
+  }
+
+  // 起跳掩码：全图每像素独立判定"谁发起一次搬家"。
+  // 用键控哈希做判定 → 加密/解密两侧算出的掩码完全一致，无需存储。
+  // 注意：被选中的只是"发起交换的位置"，搬家对象可以是任何一个像素，
+  // 所以不存在"整块原封不动"的像素集合 —— 这正是 95% 还残留轮廓的原因。
+  const DOMAIN_SEL = 0x53454c00; // "SEL"
+
+  // 强度 s ∈ [0,1] → 起跳密度 d = s²（低强度更细腻，高强度迅速摧毁结构）
+  function densityOf(strength) {
+    const s = Math.max(0, Math.min(1, strength));
+    return s * s;
+  }
+
+  // 期望被改写的像素占比。每轮共用同一份起跳掩码，所以三轮下来：
+  //   被改 = 起跳点 ∪ 各轮的对手位置 ≈ d + (1-d)·(1 - e^(-轮数·d))
+  function changedRatioOf(strength, rounds) {
+    const d = densityOf(strength);
+    if (d <= 0) return 0;
+    if (d >= 1) return 1;
+    const R = rounds || PERM_ROUNDS;
+    return Math.min(1, d + (1 - d) * (1 - Math.exp(-R * d)));
+  }
+
+  function buildMask(N, strength, key) {
+    const d = densityOf(strength);
+    const thr = Math.round(d * 1000);
+    if (thr <= 0) return { mask: new Uint8Array(N), count: 0, density: 0 };
+    if (thr >= 1000) return { mask: null, count: N, density: 1 };  // null = 全选，走快路径
+    const base = seedWords(key, DOMAIN_SEL)[0];
+    const mask = new Uint8Array(N);
+    let count = 0;
+    for (let i = 0; i < N; i++) {
+      if (mix32((i ^ base) >>> 0) % 1000 < thr) { mask[i] = 1; count++; }
+    }
+    return { mask, count, density: count / N };
+  }
+
+  async function permute(bytes, N, key, rounds, inverse, mask, onProgress) {
+    const p32 = new Uint32Array(bytes.buffer, bytes.byteOffset, N);
+    const CHUNK = 400000;
+    const totalWork = rounds * N;
+    let done = 0;
+    for (let step = 0; step < rounds; step++) {
+      const r = inverse ? rounds - 1 - step : step;
+      const seeds = seedWords(key, (DOMAIN_PERM + r + 1) >>> 0);
+      const s0 = seeds[0], s1 = seeds[1];
+
+      if (!inverse) {
+        for (let i = 0; i < N;) {
+          const end = Math.min(N, i + CHUNK);
+          for (; i < end; i++) {
+            if (mask && !mask[i]) continue;
+            const j = swapIndexOf(s0, s1, i) % N;
+            if (j === i) continue;
+            // 对手不限于选区：否则未选中的像素会整块原地保留原色，
+            // 稀疏网点被人眼低通成一张"模糊的原图"（95% 还能看出轮廓）
+            const t = p32[i]; p32[i] = p32[j]; p32[j] = t;
+          }
+          done = step * N + i;
+          if (onProgress) onProgress(done / totalWork);
+          await yieldTick();
+        }
+      } else {
+        for (let i = N - 1; i >= 0;) {
+          const end = Math.max(-1, i - CHUNK);
+          for (; i > end; i--) {
+            if (mask && !mask[i]) continue;
+            const j = swapIndexOf(s0, s1, i) % N;
+            if (j === i) continue;
+            const t = p32[i]; p32[i] = p32[j]; p32[j] = t;
+          }
+          done = step * N + (N - 1 - i);
+          if (onProgress) onProgress(done / totalWork);
+          await yieldTick();
+        }
+      }
+    }
+    if (onProgress) onProgress(1);
+  }
+
+  /* -------------------------- 逐像素异或 ---------------------------- */
+  async function xorStream(bytes, key, hasAlpha, mask, onProgress) {
+    const N = bytes.length >> 2;
+    const next = makeRng(key, DOMAIN_XOR);
+    const CHUNK = 400000;
+    for (let i = 0; i < N;) {
+      const end = Math.min(N, i + CHUNK);
+      for (; i < end; i++) {
+        if (mask && !mask[i]) continue;
+        const o = i * 4;
+        const k = next();
+        bytes[o] ^= (k >>> 24) & 255;
+        bytes[o + 1] ^= (k >>> 16) & 255;
+        bytes[o + 2] ^= (k >>> 8) & 255;
+        if (hasAlpha) bytes[o + 3] ^= k & 255;
+      }
+      if (onProgress) onProgress(i / N);
+      await yieldTick();
+    }
+    if (onProgress) onProgress(1);
+  }
+
+  /* --------------------------- 对外接口 ----------------------------- */
+  // strength ∈ (0,1]：打乱强度。1 = 全图彻底打乱；越小越"只打碎一部分"
+  async function scramble(bytes, N, key, hasAlpha, rounds, strength, onProgress) {
+    const p = onProgress || (() => {});
+    const { mask } = buildMask(N, strength, key);
+    await permute(bytes, N, key, rounds, false, mask, (f) => p(f * 0.6));
+    await xorStream(bytes, key, hasAlpha, mask, (f) => p(0.6 + f * 0.4));
+    p(1);
+  }
+
+  async function unscramble(bytes, N, key, hasAlpha, rounds, strength, onProgress) {
+    const p = onProgress || (() => {});
+    const { mask } = buildMask(N, strength, key);
+    await xorStream(bytes, key, hasAlpha, mask, (f) => p(f * 0.4));
+    await permute(bytes, N, key, rounds, true, mask, (f) => p(0.4 + f * 0.6));
+    p(1);
+  }
+
+  function detectAlpha(bytes) {
+    for (let i = 3; i < bytes.length; i += 4) if (bytes[i] !== 255) return true;
+    return false;
+  }
+
+  function diffStats(a, b) {
+    let changedPixels = 0, changedBytes = 0;
+    const n = Math.min(a.length, b.length);
+    for (let i = 0; i < n; i += 4) {
+      let diff = false;
+      for (let k = 0; k < 4; k++) {
+        if (a[i + k] !== b[i + k]) { diff = true; changedBytes++; }
+      }
+      if (diff) changedPixels++;
+    }
+    const pixels = n / 4;
+    return {
+      pixels,
+      changedPixels,
+      changedBytes,
+      pixelRatio: pixels ? changedPixels / pixels : 0,
+      bytesPerPixel: pixels ? changedBytes / pixels : 0
+    };
+  }
+
+  /* ------------------------- PNG tEXt 读写 -------------------------- */
+  const CRC_TABLE = (function () {
+    const t = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c >>> 0;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = 0xffffffff;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 255] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  }
+
+  const PNG_SIG = [137, 80, 78, 71, 13, 10, 26, 10];
+
+  function isPng(u8) {
+    if (u8.length < 8) return false;
+    for (let i = 0; i < 8; i++) if (u8[i] !== PNG_SIG[i]) return false;
+    return true;
+  }
+
+  function makeTextChunk(keyword, text) {
+    const enc = new TextEncoder();
+    const kw = enc.encode(keyword);
+    const tx = enc.encode(text);
+    const data = new Uint8Array(kw.length + 1 + tx.length);
+    data.set(kw, 0); data[kw.length] = 0; data.set(tx, kw.length + 1);
+    const type = enc.encode('tEXt');
+    const chunk = new Uint8Array(12 + data.length);
+    const len = data.length;
+    chunk[0] = (len >>> 24) & 255; chunk[1] = (len >>> 16) & 255;
+    chunk[2] = (len >>> 8) & 255; chunk[3] = len & 255;
+    chunk.set(type, 4);
+    chunk.set(data, 8);
+    const crcInput = new Uint8Array(4 + data.length);
+    crcInput.set(type, 0); crcInput.set(data, 4);
+    const c = crc32(crcInput);
+    const o = 8 + data.length;
+    chunk[o] = (c >>> 24) & 255; chunk[o + 1] = (c >>> 16) & 255;
+    chunk[o + 2] = (c >>> 8) & 255; chunk[o + 3] = c & 255;
+    return chunk;
+  }
+
+  // 在 IEND 之前插入（或替换同名）tEXt 块
+  function pngSetText(u8bytes, keyword, text) {
+    let u8 = u8bytes instanceof Uint8Array ? u8bytes : new Uint8Array(u8bytes);
+    if (!isPng(u8)) throw new Error('不是有效的 PNG 数据');
+    const parts = [u8.subarray(0, 8)];
+    let p = 8, inserted = false, replaced = false;
+    while (p + 8 <= u8.length) {
+      const len = readU32BE(u8, p);
+      const type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      const total = 12 + len;
+      if (type === 'tEXt' && !replaced) {
+        const start = p + 8;
+        let nul = start;
+        while (nul < start + len && u8[nul] !== 0) nul++;
+        const kw = String.fromCharCode.apply(null, u8.subarray(start, nul));
+        if (kw === keyword) { p += total; replaced = true; continue; }
+      }
+      if (type === 'IEND') {
+        if (!inserted) { parts.push(makeTextChunk(keyword, text)); inserted = true; }
+        parts.push(u8.subarray(p, p + total));
+      } else {
+        parts.push(u8.subarray(p, p + total));
+      }
+      p += total;
+    }
+    if (!inserted) parts.push(makeTextChunk(keyword, text));
+    let size = 0;
+    for (const part of parts) size += part.length;
+    const out = new Uint8Array(size);
+    let off = 0;
+    for (const part of parts) { out.set(part, off); off += part.length; }
+    return out;
+  }
+
+  function pngGetText(u8, keyword) {
+    if (!isPng(u8)) return null;
+    let p = 8;
+    while (p + 8 <= u8.length) {
+      const len = readU32BE(u8, p);
+      const type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      if (type === 'tEXt') {
+        const start = p + 8;
+        let nul = start;
+        while (nul < start + len && u8[nul] !== 0) nul++;
+        let title = '';
+        for (let i = start; i < nul; i++) title += String.fromCharCode(u8[i]);
+        if (title === keyword) {
+          let val = '';
+          for (let i = nul + 1; i < start + len; i++) val += String.fromCharCode(u8[i]);
+          return val;
+        }
+      }
+      p += 12 + len;
+    }
+    return null;
+  }
+
+  /* ---------------------- 自研 PNG 编码/解码 ------------------------ */
+  // 为什么不用 canvas 编码：浏览器 canvas 内部是「预乘 alpha」，半透明像素
+  // 经 putImageData→toBlob 会出现 ±1 的舍入误差，密文一改就再也解不回来。
+  // 这里自己写 PNG（8bit RGBA + 非压缩 deflate 块），保证字节级精确。
+  function adler32(data) {
+    let a = 1, b = 0;
+    const MOD = 65521;
+    const NMAX = 5552;
+    let i = 0;
+    const len = data.length;
+    while (i < len) {
+      const end = Math.min(i + NMAX, len);
+      for (; i < end; i++) { a += data[i]; b += a; }
+      a %= MOD; b %= MOD;
+    }
+    return ((b << 16) | a) >>> 0;
+  }
+
+  function zlibStore(data) {
+    const MAXB = 65535;
+    const blocks = Math.max(1, Math.ceil(data.length / MAXB));
+    const out = new Uint8Array(2 + data.length + blocks * 5 + 4);
+    out[0] = 0x78; out[1] = 0x01; // CMF/FLG：deflate, 32K window, no dict
+    let o = 2, off = 0;
+    for (let i = 0; i < blocks; i++) {
+      const len = Math.min(MAXB, data.length - off);
+      const isLast = i === blocks - 1 ? 1 : 0;
+      out[o++] = isLast;                      // BFINAL + BTYPE=00(stored)
+      out[o++] = len & 255; out[o++] = (len >>> 8) & 255;
+      const nlen = (~len) & 0xffff;
+      out[o++] = nlen & 255; out[o++] = (nlen >>> 8) & 255;
+      out.set(data.subarray(off, off + len), o);
+      o += len; off += len;
+    }
+    const ad = adler32(data);
+    out[o++] = (ad >>> 24) & 255; out[o++] = (ad >>> 16) & 255;
+    out[o++] = (ad >>> 8) & 255; out[o++] = ad & 255;
+    return out.subarray(0, o);
+  }
+
+  function makeChunk(type, data) {
+    const enc = new TextEncoder();
+    const t = enc.encode(type);
+    const len = data.length;
+    const out = new Uint8Array(12 + len);
+    out[0] = (len >>> 24) & 255; out[1] = (len >>> 16) & 255;
+    out[2] = (len >>> 8) & 255; out[3] = len & 255;
+    out.set(t, 4);
+    out.set(data, 8);
+    const crcInput = new Uint8Array(4 + len);
+    crcInput.set(t, 0); crcInput.set(data, 4);
+    const c = crc32(crcInput);
+    out[8 + len] = (c >>> 24) & 255; out[9 + len] = (c >>> 16) & 255;
+    out[10 + len] = (c >>> 8) & 255; out[11 + len] = c & 255;
+    return out;
+  }
+
+  // pixels: RGBA 连续字节，长度 w*h*4
+  function encodePng(pixels, w, h, textKeyword, textValue) {
+    const stride = w * 4;
+    const raw = new Uint8Array(h * (stride + 1));
+    for (let y = 0; y < h; y++) {
+      const dst = y * (stride + 1);
+      raw[dst] = 0; // filter: None
+      raw.set(pixels.subarray(y * stride, y * stride + stride), dst + 1);
+    }
+    const idat = zlibStore(raw);
+    const ihdr = new Uint8Array(13);
+    ihdr[0] = (w >>> 24) & 255; ihdr[1] = (w >>> 16) & 255;
+    ihdr[2] = (w >>> 8) & 255; ihdr[3] = w & 255;
+    ihdr[4] = (h >>> 24) & 255; ihdr[5] = (h >>> 16) & 255;
+    ihdr[6] = (h >>> 8) & 255; ihdr[7] = h & 255;
+    ihdr[8] = 8;  // bit depth
+    ihdr[9] = 6;  // color type: RGBA
+    ihdr[10] = 0; ihdr[11] = 0; ihdr[12] = 0;
+
+    const parts = [new Uint8Array(PNG_SIG)];
+    parts.push(makeChunk('IHDR', ihdr));
+    if (textKeyword && textValue != null) {
+      const enc = new TextEncoder();
+      const kw = enc.encode(textKeyword);
+      const tx = enc.encode(textValue);
+      const d = new Uint8Array(kw.length + 1 + tx.length);
+      d.set(kw, 0); d[kw.length] = 0; d.set(tx, kw.length + 1);
+      parts.push(makeChunk('tEXt', d));
+    }
+    parts.push(makeChunk('IDAT', idat));
+    parts.push(makeChunk('IEND', new Uint8Array(0)));
+
+    let size = 0;
+    for (const p of parts) size += p.length;
+    const out = new Uint8Array(size);
+    let off = 0;
+    for (const p of parts) { out.set(p, off); off += p.length; }
+    return out;
+  }
+
+  // 只解我们自己写出的格式（8bit RGBA、非压缩 IDAT）。失败返回 null，交给 canvas 兜底。
+  function decodeOwnPng(u8) {
+    if (!isPng(u8)) return null;
+    let p = 8, w = 0, h = 0, bitDepth = 0, colorType = -1, interlace = 0;
+    const idat = [];
+    let sawEnd = false;
+    while (p + 8 <= u8.length) {
+      const len = readU32BE(u8, p);
+      if (p + 12 + len > u8.length) return null;
+      const type = String.fromCharCode(u8[p + 4], u8[p + 5], u8[p + 6], u8[p + 7]);
+      if (type === 'IHDR') {
+        w = readU32BE(u8, p + 8); h = readU32BE(u8, p + 12);
+        bitDepth = u8[p + 16]; colorType = u8[p + 17]; interlace = u8[p + 20];
+      } else if (type === 'IDAT') {
+        idat.push(u8.subarray(p + 8, p + 8 + len));
+      } else if (type === 'IEND') { sawEnd = true; break; }
+      p += 12 + len;
+    }
+    if (!sawEnd || !w || !h || bitDepth !== 8 || colorType !== 6 || interlace !== 0) return null;
+    if (!idat.length) return null;
+
+    let total = 0;
+    for (const c of idat) total += c.length;
+    const z = new Uint8Array(total);
+    let zo = 0;
+    for (const c of idat) { z.set(c, zo); zo += c.length; }
+
+    if (z.length < 6) return null;
+    const cmf = z[0], flg = z[1];
+    if ((cmf & 0x0f) !== 8) return null;              // deflate
+    if (((cmf << 8) | flg) % 31 !== 0) return null;
+    if (flg & 0x20) return null;                      // 不支持 preset dict
+
+    const rawLen = h * (w * 4 + 1);
+    const raw = new Uint8Array(rawLen);
+    let ro = 0, i = 2;
+    while (i < z.length && ro < rawLen) {
+      const hdr = z[i];
+      const bfinal = hdr & 1;
+      const btype = (hdr >>> 1) & 3;
+      if (btype !== 0) return null;                  // 非存储块 → 交给 canvas
+      const len = z[i + 1] | (z[i + 2] << 8);
+      const nlen = z[i + 3] | (z[i + 4] << 8);
+      if (((len ^ nlen) & 0xffff) !== 0xffff) return null;
+      i += 5;
+      if (i + len > z.length) return null;
+      if (ro + len > rawLen) return null;
+      raw.set(z.subarray(i, i + len), ro);
+      ro += len; i += len;
+      if (bfinal) break;
+    }
+    if (ro !== rawLen) return null;
+
+    const stride = w * 4;
+    const pixels = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      const src = y * (stride + 1);
+      if (raw[src] !== 0) return null;               // 只用 None 滤镜
+      pixels.set(raw.subarray(src + 1, src + 1 + stride), y * stride);
+    }
+    return { pixels, width: w, height: h };
+  }
+
+  function randomBytes(n) {
+    const u8 = new Uint8Array(n);
+    const g = typeof globalThis !== 'undefined' ? globalThis : null;
+    if (g && g.crypto && g.crypto.getRandomValues) g.crypto.getRandomValues(u8);
+    else for (let i = 0; i < n; i++) u8[i] = (Math.random() * 256) | 0;
+    return u8;
+  }
+
+  /* --------------------------- 编解码 ------------------------------ */
+  function bytesToB64(u8) {    let s = '';
+    const CH = 0x8000;
+    for (let i = 0; i < u8.length; i += CH) {
+      s += String.fromCharCode.apply(null, u8.subarray(i, Math.min(u8.length, i + CH)));
+    }
+    if (typeof btoa === 'function') return btoa(s);
+    return Buffer.from(u8).toString('base64');
+  }
+
+  function b64ToBytes(str) {
+    const clean = String(str).replace(/\s+/g, '');
+    if (typeof atob === 'function') {
+      const s = atob(clean);
+      const out = new Uint8Array(s.length);
+      for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+      return out;
+    }
+    return new Uint8Array(Buffer.from(clean, 'base64'));
+  }
+
+  return {
+    VERSION, PERM_ROUNDS, PBKDF2_ITER, PBKDF2_ITER_JS, SALT_LEN, KEY_LEN,
+    sha256, hmacSha256, pbkdf2Js, deriveKey, makeRng, toHex, humanBytes,
+    scramble, unscramble, buildMask, densityOf, changedRatioOf, detectAlpha, diffStats,
+    crc32, pngSetText, pngGetText, isPng, bytesToB64, b64ToBytes,
+    encodePng, decodeOwnPng, randomBytes, adler32, zlibStore
+  };
+});
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const C = window.WBEnc;
+  const $ = (s) => document.querySelector(s);
+
+  const state = {
+    enc: {
+      file: null, imageData: null, hasAlpha: false, outBlob: null,
+      keyStr: '', origSize: 0, cache: null, runId: 0, params: '', lastVerify: null
+    },
+    dec: { file: null, bytes: null, header: null, outBlob: null, runId: 0 }
+  };
+
+  /* ----------------------------- 小工具 ----------------------------- */
+  function toast(msg, kind) {
+    const box = $('#toast');
+    box.textContent = msg;
+    box.className = 'toast show ' + (kind || 'info');
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => { box.className = 'toast'; }, 4200);
+  }
+
+  function setBar(wrap, pct, label) {
+    wrap.hidden = false;
+    const i = wrap.querySelector('.bar > i');
+    const t = wrap.querySelector('.pct');
+    const v = Math.min(1, Math.max(0, pct));
+    i.style.width = (v * 100).toFixed(1) + '%';
+    t.textContent = label || Math.round(v * 100) + '%';
+  }
+
+  function equalBytes(a, b) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+    return true;
+  }
+
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 20000);
+  }
+
+  function openInNewTab(blob) {
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (!w) toast('浏览器拦截了新窗口，请允许弹窗后重试', 'err');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  const baseName = (name) => (name || 'image').replace(/\.[^.]+$/, '') || 'image';
+
+  function decodeToImageData(file) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || img.width;
+          const h = img.naturalHeight || img.height;
+          if (!w || !h) throw new Error('图片尺寸为 0');
+          const cv = document.createElement('canvas');
+          cv.width = w; cv.height = h;
+          const ctx = cv.getContext('2d', { willReadFrequently: true });
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, w, h);
+          const data = ctx.getImageData(0, 0, w, h);
+          URL.revokeObjectURL(url);
+          resolve(data);
+        } catch (e) { URL.revokeObjectURL(url); reject(e); }
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('无法解码这张图片')); };
+      img.src = url;
+    });
+  }
+
+  const tagOf = (key) => {
+    const msg = new TextEncoder().encode('wb-verify');
+    const buf = new Uint8Array(key.length + msg.length);
+    buf.set(key, 0); buf.set(msg, key.length);
+    return C.sha256(buf).subarray(0, 6);
+  };
+
+  function statCard(label, value, cls) {
+    return '<div class="stat"><span>' + label + '</span><b class="' + (cls || '') + '">' + value + '</b></div>';
+  }
+
+  /* ----------------------------- 标签页 ----------------------------- */
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
+      $('#tab-enc').hidden = tab.dataset.tab !== 'enc';
+      $('#tab-dec').hidden = tab.dataset.tab !== 'dec';
+    });
+  });
+
+  /* ------------------------ 打乱强度滑杆 ---------------------------- */
+  function syncRatioUI() {
+    const v = +$('#encRatio').value;
+    $('#encRatioVal').textContent = v + '%';
+    const s = Math.max(0.01, v / 100);
+    const est = C.changedRatioOf(s, C.PERM_ROUNDS);
+    let mood;
+    if (v >= 95) mood = '几乎全毁：和 100% 肉眼分不出';
+    else if (v >= 80) mood = '几乎认不出：只剩零星色块';
+    else if (v >= 60) mood = '重度打乱：结构碎光，隐约有点明暗';
+    else if (v >= 35) mood = '明显打乱：细节成噪点，画面还认得出';
+    else if (v >= 15) mood = '轻度打乱：像一层椒盐噪点，图案清楚';
+    else mood = '极轻：几乎就是原图，多点噪点';
+    const pct = est >= 0.9999 ? '≈100' : Math.round(est * 100);
+    $('#encRatioHint').textContent = mood + ' · 实际约 ' + pct + '% 像素会被改写';
+  }
+
+  let ratioTimer = null;
+  $('#encRatio').addEventListener('input', () => {
+    syncRatioUI();
+    const st = state.enc;
+    if (!st.imageData || !st.outBlob) return;   // 还没生成过就不自动跑
+    clearTimeout(ratioTimer);
+    ratioTimer = setTimeout(() => { generateEncrypt({ verify: false, auto: true }); }, 260);
+  });
+
+  /* ----------------------------- 加密 ------------------------------- */
+  const encDrop = $('#encDrop');
+
+  function resetEnc() {
+    state.enc = {
+      file: null, imageData: null, hasAlpha: false, outBlob: null,
+      keyStr: '', origSize: 0, cache: null, runId: state.enc.runId + 1, params: '', lastVerify: null
+    };
+    $('#encFile').value = '';
+    $('#encStage').hidden = true;
+    $('#encDrop').classList.remove('compact');
+    $('#encStats').hidden = true;
+    $('#encKeyBox').hidden = true;
+    $('#encProg').hidden = true;
+    $('#encDown').hidden = true;
+    $('#encAgain').hidden = true;
+    $('#encImgOut').removeAttribute('src');
+    $('#encOutEmpty').hidden = false;
+    $('#encOutMeta').textContent = '';
+    syncRatioUI();
+  }
+
+  async function pickEncFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
+      toast('请选择图片文件', 'err'); return;
+    }
+    try {
+      const data = await decodeToImageData(file);
+      state.enc.file = file;
+      state.enc.imageData = data;
+      state.enc.origSize = file.size;
+      state.enc.hasAlpha = C.detectAlpha(data.data);
+      state.enc.cache = null;
+      state.enc.outBlob = null;
+      state.enc.params = '';
+      state.enc.runId++;
+
+      $('#encImgSrc').src = URL.createObjectURL(file);
+      $('#encMeta').textContent = data.width + ' × ' + data.height + ' · ' + C.humanBytes(file.size) + (state.enc.hasAlpha ? ' · 含透明' : '');
+      $('#encStage').hidden = false;
+      $('#encDrop').classList.add('compact');
+      $('#encStats').hidden = true;
+      $('#encKeyBox').hidden = true;
+      $('#encDown').hidden = true;
+      $('#encAgain').hidden = true;
+      $('#encOutEmpty').hidden = false;
+      $('#encImgOut').removeAttribute('src');
+      $('#encOutMeta').textContent = '';
+      syncRatioUI();
+
+      const n = data.width * data.height;
+      if (n > 30e6) toast('这张图有 ' + (n / 1e6).toFixed(0) + ' 百万像素，处理会比较慢', 'info');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  encDrop.addEventListener('click', () => $('#encFile').click());
+  encDrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#encFile').click(); }
+  });
+  $('#encFile').addEventListener('change', (e) => pickEncFile(e.target.files[0]));
+  ['dragenter', 'dragover'].forEach((ev) => encDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); encDrop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => encDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); encDrop.classList.remove('over');
+  }));
+  encDrop.addEventListener('drop', (e) => pickEncFile(e.dataTransfer.files && e.dataTransfer.files[0]));
+  $('#encReset').addEventListener('click', resetEnc);
+  $('#encPw').addEventListener('input', () => { state.enc.cache = null; state.enc.params = ''; });
+
+  async function generateEncrypt(opts) {
+    opts = opts || {};
+    const st = state.enc;
+    if (!st.imageData) { toast('请先选一张图片', 'err'); return; }
+
+    const pw = $('#encPw').value;
+    const strength = Math.min(1, Math.max(0.01, (+$('#encRatio').value) / 100));
+    const signature = pw + '|' + strength;
+
+    if (st.outBlob && st.params === signature) {
+      toast('结果已是最新，可以直接下载或另存', 'info');
+      return;
+    }
+
+    const runId = ++st.runId;
+    const stale = () => st.runId !== runId;
+    const prog = $('#encProg');
+    const btn = $('#encRun');
+    btn.disabled = true;
+
+    try {
+      const w = st.imageData.width, h = st.imageData.height;
+      const N = w * h;
+      const original = new Uint8Array(st.imageData.data);
+
+      // 1) 密钥：同一张图 + 同一口令只派生一次，拖动比例不会重复跑 PBKDF2
+      let cache = st.cache;
+      if (!cache || cache.pw !== pw) {
+        if (pw) {
+          const hasSubtle = !!(window.crypto && window.crypto.subtle);
+          const iters = hasSubtle ? C.PBKDF2_ITER : C.PBKDF2_ITER_JS;
+          const salt = C.randomBytes(C.SALT_LEN);
+          setBar(prog, 0.04, '派生密钥…');
+          const key = await C.deriveKey(pw, salt, iters);
+          if (stale()) return;
+          cache = { pw: pw, mode: 'p', salt: salt, iters: iters, key: key };
+        } else {
+          const salt = C.randomBytes(C.KEY_LEN);
+          cache = { pw: '', mode: 'r', salt: salt, iters: 0, key: salt };
+        }
+        st.cache = cache;
+      }
+
+      // 2) 置乱
+      const work = original.slice();
+      setBar(prog, 0.12, '打乱像素…');
+      await C.scramble(work, N, cache.key, st.hasAlpha, C.PERM_ROUNDS, strength, (f) => {
+        if (!stale()) setBar(prog, 0.12 + f * 0.66, '打乱像素…');
+      });
+      if (stale()) return;
+
+      const stats = C.diffStats(original, work);
+
+      // 3) 可逆性自检
+      let verified = null;
+      if (opts.verify) {
+        setBar(prog, 0.8, '校验可逆性…');
+        const check = work.slice();
+        await C.unscramble(check, N, cache.key, st.hasAlpha, C.PERM_ROUNDS, strength, (f) => {
+          if (!stale()) setBar(prog, 0.8 + f * 0.16, '校验可逆性…');
+        });
+        if (stale()) return;
+        verified = equalBytes(check, original);
+        st.lastVerify = verified;
+      }
+
+      // 4) 编码
+      setBar(prog, 0.98, '编码 PNG…');
+      const header = {
+        v: C.VERSION, m: cache.mode, it: cache.iters,
+        s: C.bytesToB64(cache.salt), w: w, h: h,
+        a: st.hasAlpha ? 1 : 0, r: C.PERM_ROUNDS,
+        c: Math.round(strength * 1000),
+        t: C.bytesToB64(tagOf(cache.key))
+      };
+      const keyStr = C.bytesToB64(new TextEncoder().encode(JSON.stringify(header)));
+      const png = C.encodePng(work, w, h, 'wbenc', keyStr);
+      const blob = new Blob([png], { type: 'image/png' });
+      if (stale()) return;
+
+      st.outBlob = blob;
+      st.keyStr = keyStr;
+      st.params = signature;
+
+      $('#encImgOut').src = URL.createObjectURL(blob);
+      $('#encOutEmpty').hidden = true;
+      $('#encOutMeta').textContent = w + ' × ' + h + ' · ' + C.humanBytes(blob.size);
+
+      $('#encStats').hidden = false;
+      $('#encStats').innerHTML = [
+        statCard('像素改变率', (stats.pixelRatio * 100).toFixed(2) + '%',
+          stats.pixelRatio > 0.999 ? 'good' : ''),
+        statCard('平均每像素改变通道', stats.bytesPerPixel.toFixed(2) + ' / 4'),
+        statCard('往返校验', verified === null ? '未校验' : (verified ? '逐字节一致 ✓' : '失败 ✗'),
+          verified === null ? '' : (verified ? 'good' : 'bad')),
+        statCard('文件体积', C.humanBytes(st.origSize) + ' → ' + C.humanBytes(blob.size))
+      ].join('');
+
+      $('#encDown').hidden = false;
+      $('#encAgain').hidden = false;
+      $('#encKeyBox').hidden = false;
+      $('#encKeyStr').textContent = keyStr;
+
+      setBar(prog, 1, '完成');
+      setTimeout(() => { if (!stale()) prog.hidden = true; }, 500);
+
+      if (!opts.auto) {
+        toast(verified === false ? '校验失败，请重试' : '置乱图已生成，可在线查看或下载',
+          verified === false ? 'err' : 'ok');
+      }
+    } catch (e) {
+      toast(e.message || String(e), 'err');
+      prog.hidden = true;
+    } finally {
+      if (!stale()) btn.disabled = false;
+    }
+  }
+
+  $('#encRun').addEventListener('click', () => generateEncrypt({ verify: $('#encVerify').checked }));
+
+  $('#encDown').addEventListener('click', () => {
+    const st = state.enc;
+    if (!st.outBlob) { toast('还没有生成结果', 'err'); return; }
+    download(st.outBlob, baseName(st.file.name) + '.scrambled.png');
+  });
+
+  $('#encAgain').addEventListener('click', () => {
+    if (state.enc.outBlob) openInNewTab(state.enc.outBlob);
+  });
+
+  $('#encCopy').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText($('#encKeyStr').textContent);
+      toast('密钥串已复制', 'ok');
+    } catch (e) { toast('复制失败，请手动选中复制', 'err'); }
+  });
+
+  /* ----------------------------- 还原 ------------------------------- */
+  const decDrop = $('#decDrop');
+
+  function resetDec() {
+    state.dec = { file: null, bytes: null, header: null, outBlob: null, runId: state.dec.runId + 1 };
+    $('#decFile').value = '';
+    $('#decStage').hidden = true;
+    $('#decDrop').classList.remove('compact');
+    $('#decStats').hidden = true;
+    $('#decProg').hidden = true;
+    $('#decKeyRow').hidden = true;
+    $('#decNoMeta').hidden = true;
+    $('#decPwRow').hidden = true;
+    $('#decDown').hidden = true;
+    $('#decImgOut').removeAttribute('src');
+    $('#decOutEmpty').hidden = false;
+  }
+
+  async function pickDecFile(file) {
+    if (!file) return;
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      if (!C.isPng(buf)) { toast('请上传本工具生成的 PNG 文件', 'err'); return; }
+      state.dec.file = file;
+      state.dec.bytes = buf;
+      state.dec.outBlob = null;
+
+      const text = C.pngGetText(buf, 'wbenc');
+      let header = null;
+      if (text) {
+        try { header = JSON.parse(new TextDecoder().decode(C.b64ToBytes(text))); } catch (e) { header = null; }
+      }
+      state.dec.header = header;
+
+      const own = C.decodeOwnPng(buf);
+      const w = header ? header.w : (own ? own.width : 0);
+      const h = header ? header.h : (own ? own.height : 0);
+
+      $('#decImgSrc').src = URL.createObjectURL(file);
+      $('#decMeta').textContent = (w && h ? w + ' × ' + h + ' · ' : '') + C.humanBytes(file.size) +
+        (header ? '' : ' · 未找到元数据');
+      $('#decStage').hidden = false;
+      $('#decDrop').classList.add('compact');
+      $('#decStats').hidden = true;
+      $('#decOutEmpty').hidden = false;
+      $('#decDown').hidden = true;
+      $('#decImgOut').removeAttribute('src');
+      $('#decKeyRow').hidden = !!header;
+      $('#decPwRow').hidden = !(header && header.m === 'p');
+      $('#decNoMeta').hidden = !!header;
+
+      if (header && header.m === 'r') toast('这张图没设口令，直接点「开始还原」即可', 'info');
+      if (!header) toast('没找到元数据，请在下方粘贴加密时备份的密钥串', 'err');
+    } catch (e) { toast(e.message, 'err'); }
+  }
+
+  decDrop.addEventListener('click', () => $('#decFile').click());
+  decDrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#decFile').click(); }
+  });
+  $('#decFile').addEventListener('change', (e) => pickDecFile(e.target.files[0]));
+  ['dragenter', 'dragover'].forEach((ev) => decDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); decDrop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach((ev) => decDrop.addEventListener(ev, (e) => {
+    e.preventDefault(); decDrop.classList.remove('over');
+  }));
+  decDrop.addEventListener('drop', (e) => pickDecFile(e.dataTransfer.files && e.dataTransfer.files[0]));
+  $('#decReset').addEventListener('click', resetDec);
+
+  $('#decRun').addEventListener('click', async () => {
+    const st = state.dec;
+    if (!st.bytes) { toast('请先选一张置乱图', 'err'); return; }
+    const runId = ++st.runId;
+    const stale = () => st.runId !== runId;
+    const prog = $('#decProg');
+    const btn = $('#decRun');
+    btn.disabled = true;
+
+    try {
+      let header = st.header;
+      if (!header) {
+        const pasted = $('#decKeyInput').value.trim();
+        if (!pasted) throw new Error('缺少密钥串：请粘贴加密时备份的密钥串');
+        header = JSON.parse(new TextDecoder().decode(C.b64ToBytes(pasted)));
+      }
+
+      setBar(prog, 0.05, '读取像素…');
+      let pixels, w, h;
+      const own = C.decodeOwnPng(st.bytes);
+      if (own) {
+        pixels = own.pixels; w = own.width; h = own.height;
+        setBar(prog, 0.1, '读取像素…');
+      } else {
+        const data = await decodeToImageData(st.file);
+        pixels = new Uint8Array(data.data);
+        w = data.width; h = data.height;
+      }
+      if (stale()) return;
+      if (w !== header.w || h !== header.h) {
+        throw new Error('尺寸不匹配：文件是 ' + w + '×' + h + '，元数据记录 ' + header.w + '×' + header.h);
+      }
+
+      const hasAlpha = !!header.a;
+      const rounds = header.r || C.PERM_ROUNDS;
+      const strength = typeof header.c === 'number'
+        ? Math.min(1, Math.max(0.001, header.c / 1000))
+        : 1;
+      if ((header.v || 1) !== C.VERSION) {
+        throw new Error('这张图是旧版算法（v' + (header.v || 1) + '）生成的，请用旧版页面还原，或重新生成一次');
+      }
+
+      let key;
+      if (header.m === 'p') {
+        const pw = $('#decPw').value;
+        if (!pw) throw new Error('这张图设置了口令，请先输入');
+        setBar(prog, 0.12, '派生密钥…');
+        key = await C.deriveKey(pw, C.b64ToBytes(header.s), header.it || C.PBKDF2_ITER);
+        if (stale()) return;
+      } else {
+        key = C.b64ToBytes(header.s);
+      }
+      if (header.t && C.bytesToB64(tagOf(key)) !== header.t) {
+        throw new Error('口令不正确，或文件已被修改');
+      }
+
+      setBar(prog, 0.2, '还原像素…');
+      await C.unscramble(pixels, header.w * header.h, key, hasAlpha, rounds, strength, (f) => {
+        if (!stale()) setBar(prog, 0.2 + f * 0.75, '还原像素…');
+      });
+      if (stale()) return;
+
+      setBar(prog, 0.97, '编码 PNG…');
+      const png = C.encodePng(pixels, header.w, header.h, null, null);
+      const blob = new Blob([png], { type: 'image/png' });
+      st.outBlob = blob;
+
+      $('#decImgOut').src = URL.createObjectURL(blob);
+      $('#decOutEmpty').hidden = true;
+      $('#decDown').hidden = false;
+      $('#decStats').hidden = false;
+      $('#decStats').innerHTML = [
+        statCard('尺寸', header.w + ' × ' + header.h),
+        statCard('打乱强度', (strength * 100).toFixed(0) + '%'),
+        statCard('透明通道', hasAlpha ? '已还原' : '不透明'),
+        statCard('文件体积', C.humanBytes(blob.size))
+      ].join('');
+
+      setBar(prog, 1, '完成');
+      setTimeout(() => { if (!stale()) prog.hidden = true; }, 500);
+      toast('已还原，可在线查看或下载', 'ok');
+    } catch (e) {
+      toast(e.message || String(e), 'err');
+      prog.hidden = true;
+    } finally {
+      if (!stale()) btn.disabled = false;
+    }
+  });
+
+  $('#decDown').addEventListener('click', () => {
+    const st = state.dec;
+    if (!st.outBlob) return;
+    download(st.outBlob, baseName(st.file.name).replace(/\.scrambled$/, '') + '.restored.png');
+  });
+
+  /* --------------------------- 粘贴支持 ----------------------------- */
+  document.addEventListener('paste', (e) => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const it of items) {
+      if (it.type && it.type.indexOf('image/') === 0) {
+        const f = it.getAsFile();
+        if (!f) continue;
+        if (!$('#tab-dec').hidden) pickDecFile(f); else pickEncFile(f);
+        e.preventDefault();
+        return;
+      }
+    }
+  });
+
+  syncRatioUI();
+})();
+
+</script>
+</body>
+</html>
