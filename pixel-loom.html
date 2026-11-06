@@ -206,6 +206,25 @@
   .toast.show{opacity:1;transform:translate(-50%,0)}
   .toast.err{background:#b3302f}
   .toast.ok{background:#148a58}
+
+  /* ---------- 使用须知 ---------- */
+  .legal{
+    margin-top:34px;padding:18px 20px;border-radius:14px;
+    background:rgba(255,255,255,.55);border:1px solid var(--line);
+  }
+  .legal h2{
+    margin:0 0 10px;font-size:13px;font-weight:640;color:var(--muted);
+    letter-spacing:.06em;text-transform:uppercase;
+    display:flex;align-items:center;gap:7px;
+  }
+  .legal h2 svg{width:14px;height:14px;stroke:var(--muted)}
+  .legal ul{margin:0;padding:0;list-style:none;display:grid;gap:7px}
+  .legal li{
+    font-size:12.5px;line-height:1.7;color:var(--muted);
+    padding-left:16px;position:relative;
+  }
+  .legal li::before{content:'·';position:absolute;left:4px;color:#b5b5c6;font-weight:700}
+  .legal li b{color:#5c5c72;font-weight:600}
 </style>
 </head>
 <body>
@@ -372,6 +391,24 @@
       </ul>
     </div>
   </details>
+
+  <!-- ================= 使用须知 ================= -->
+  <footer class="legal">
+    <h2>
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3l8 4v5c0 4.6-3.4 8.4-8 9-4.6-.6-8-4.4-8-9V7l8-4z"/>
+        <path d="M12 9v4"/><circle cx="12" cy="16.2" r=".4"/>
+      </svg>
+      使用须知与免责声明
+    </h2>
+    <ul>
+      <li><b>本地处理，无数据收集：</b>本工具的全部计算均在你的浏览器内完成，<b>任何图片都不会被上传或存储</b>，工具作者无法知晓、记录或控制使用者处理的具体内容。</li>
+      <li><b>用途限定：</b>本工具仅供个人学习研究与合法的隐私保护用途（如保护个人照片不被随手查看）。使用前请了解并遵守所在地区的法律法规。</li>
+      <li><b>禁止滥用：</b>严禁将本工具用于制作、传播、隐藏任何违法违规内容。违规使用产生的一切行为及后果，均由使用者自行承担。</li>
+      <li><b>责任划分：</b>本工具按"现状"提供，作者不对滥用行为承担责任，也不参与、不知晓、不协助任何具体使用场景下的内容处理。</li>
+      <li><b>安全性提示：</b>本工具未经密码学审计，不构成可靠的保密方案，请勿用于保护真正机密的信息；处理后原图的 EXIF 等元数据会丢失。</li>
+    </ul>
+  </footer>
 </div>
 
 <div class="toast" id="toast"></div>
