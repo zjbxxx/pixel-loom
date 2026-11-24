@@ -5,7 +5,10 @@
 ._*
 
 # 编辑器 / IDE
-.idea/
+# 只放行 VCS 映射这一张：它是 IDEA 认出 git 仓库的依据，丢了就会显示「没有版本控制」，
+# 而 .idea 里其余文件（workspace.xml 等）仍然忽略。
+.idea/*
+!.idea/vcs.xml
 .vscode/
 *.iml
 *.swp
