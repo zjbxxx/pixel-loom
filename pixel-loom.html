@@ -42,18 +42,69 @@
   h1{font-size:22px;letter-spacing:-.3px;margin:0 0 3px;font-weight:680}
   .sub{margin:0;color:var(--muted);font-size:13.5px}
 
-  /* ---------- 标签页 ---------- */
-  .tabs{
-    display:inline-flex;gap:3px;padding:3px;border-radius:12px;
-    background:#ebebf2;margin-bottom:18px;
+  /* ---------- 入口：一张图，两个动作 ---------- */
+  /* 全站只有这一张卡：选图 → 选动作 → 动作区在这张卡里往下展开。
+     不发生换页，所以干活的时候缩略图和「换一张」始终在手上。 */
+  #pickCard{display:flex;flex-direction:column;transition:outline-color .16s;outline:2px dashed transparent;outline-offset:-7px}
+  #pickCard.dropping{outline-color:var(--accent)}
+  #pickDrop{order:1}
+  #pickStage{order:2}
+  .pane{order:3;margin-top:18px;padding-top:18px;border-top:1px solid var(--line)}
+  .pane .grid2{margin-top:0}
+
+  /* 展开后缩略图行收成一条「当前文件」，把空间让给动作区 */
+  #pickCard.expanded .picked{padding:8px 10px;gap:11px;background:#fbfbff}
+  #pickCard.expanded .thumb{width:60px;height:60px}
+  #pickCard.expanded .pin b{font-size:13px}
+  #pickCard.expanded .pin em{display:none}
+
+  .picked{
+    display:flex;gap:14px;align-items:center;padding:12px;
+    border:1px solid var(--line);border-radius:14px;background:#fafafd;
   }
-  .tab{
-    appearance:none;border:0;background:transparent;color:var(--muted);
-    font:inherit;font-size:14px;font-weight:560;padding:7px 22px;border-radius:9px;cursor:pointer;
-    transition:.18s;
+  .thumb{position:relative}
+  .thumb .x{
+    position:absolute;top:3px;right:3px;width:18px;height:18px;padding:0;border:0;
+    border-radius:50%;background:rgba(24,24,38,.5);color:#fff;
+    font-size:10px;line-height:1;display:grid;place-items:center;cursor:pointer;
+    transition:.15s;
   }
-  .tab:hover{color:var(--text)}
-  .tab.active{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(20,20,50,.09)}
+  .thumb .x:hover{background:rgba(24,24,38,.8);transform:scale(1.08)}
+  .thumb{
+    width:92px;height:92px;flex:0 0 auto;border-radius:10px;overflow:hidden;
+    border:1px solid var(--line);background:#fff;display:flex;align-items:center;justify-content:center;
+  }
+  .thumb img{max-width:100%;max-height:100%;display:block}
+  .pin{min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+  .pin b{font-size:14px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pin span{font-size:12.5px;color:var(--muted)}
+  .pin em{
+    font-style:normal;font-size:12.5px;line-height:1.5;color:#4d4d95;
+    background:var(--accent-soft);border-radius:7px;padding:4px 9px;
+  }
+  .pin em.warn{color:#8a5a13;background:#fdf3e3}
+
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media (max-width:640px){.modes{grid-template-columns:1fr}}
+  @media (max-width:520px){
+    .picked{align-items:flex-start}
+    .thumb{width:68px;height:68px}
+  }
+  .mode{
+    appearance:none;font:inherit;text-align:left;cursor:pointer;transition:.16s;
+    background:#fff;border:1.5px solid var(--line);border-radius:13px;padding:14px 16px;
+    display:flex;flex-direction:column;gap:3px;
+  }
+  .mode:hover{border-color:#c2c2e6;background:#fbfbff;transform:translateY(-1px)}
+  .mode b{font-size:14.5px;font-weight:640;color:var(--text)}
+  .mode span{font-size:12.5px;color:var(--muted)}
+  .mode.suggest{border-color:#c8c8ee;background:#fbfbff}
+  .mode.suggest b{color:var(--accent)}
+  .mode.active{border-color:var(--accent);background:var(--accent-soft);transform:none}
+  .mode.active b{color:var(--accent)}
+  .mode.active span{color:#5a5a94}
+  .mode:disabled{opacity:.45;cursor:default;transform:none;background:#fff;border-color:var(--line)}
+  .mode:disabled b{color:var(--muted)}
 
   /* ---------- 卡片 ---------- */
   .card{
@@ -88,6 +139,7 @@
     display:flex;align-items:center;justify-content:center;
   }
   .ph img{max-width:100%;max-height:100%;display:block;image-rendering:auto}
+  .ph img:not([src]){display:none}   /* 还没结果时别显示破图图标，交给 .empty 提示 */
   .ph.checker{
     background-image:
       linear-gradient(45deg,#ececf2 25%,transparent 25%,transparent 75%,#ececf2 75%),
@@ -145,6 +197,11 @@
   .btn.ghost{background:#fff;border-color:var(--line);color:#4a4a60}
   .btn.ghost:hover{background:#fafafd;border-color:#d6d6e2}
   .btn.small{padding:6px 12px;font-size:12.5px;border-radius:8px}
+  /* 手机上一行尽量多塞一个：按钮多了以后按默认内边距会掉成两行 */
+  @media (max-width:520px){
+    .actions{gap:8px}
+    .actions .btn{padding:10px 14px;font-size:13.5px}
+  }
 
   /* ---------- 进度 ---------- */
   .progress{display:flex;align-items:center;gap:12px;margin-top:16px}
@@ -161,15 +218,25 @@
   .stat b.good{color:var(--good)}
   .stat b.bad{color:var(--bad)}
 
-  /* ---------- 密钥串 ---------- */
+  /* ---------- 元数据备份 ---------- */
   .keybox{margin-top:14px;border:1px solid var(--line);border-radius:12px;background:#fbfbfd;padding:12px 14px}
-  .keybox .kh{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
-  .keybox .kh>span{font-size:12.5px;color:var(--muted);font-weight:560}
+  .keybox .kh{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .keybox .kh>span{font-size:12.5px;color:var(--text);font-weight:600}
+  .keybox .kh-act{display:flex;gap:6px;flex:none}
+  .keybox .knote{margin:6px 0 0;font-size:12px;line-height:1.65;color:var(--muted)}
+  .keybox .knote b{color:#a35b12;font-weight:600}
   .keybox code{
-    display:block;font-family:var(--mono);font-size:11px;line-height:1.55;color:#4c4c63;
+    display:block;margin-top:10px;font-family:var(--mono);font-size:11px;line-height:1.55;color:#4c4c63;
     word-break:break-all;max-height:88px;overflow:auto;background:#fff;border:1px solid var(--line-2);
     border-radius:8px;padding:8px 10px;
   }
+  /* 有口令时的兜底入口：只留一行灰字，别跟「下载」抢注意力 */
+  .rescue{margin-top:14px;font-size:12px;line-height:1.7;color:var(--muted)}
+  .linkbtn{
+    border:0;background:none;padding:0;margin:0 0 0 6px;font:inherit;color:var(--accent);cursor:pointer;
+    text-decoration:underline;text-underline-offset:2.5px;text-decoration-thickness:1px;
+  }
+  .linkbtn:hover{color:var(--accent-2)}
   textarea{resize:vertical;min-height:64px;font-family:var(--mono);font-size:11.5px}
 
   .warn{
@@ -238,127 +305,151 @@
     </div>
   </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="enc">加密</button>
-    <button class="tab" data-tab="dec">还原</button>
-  </nav>
-
-  <!-- ================= 加密 ================= -->
-  <section id="tab-enc" class="card">
-    <div class="drop" id="encDrop" role="button" tabindex="0">
-      <input type="file" id="encFile" accept="image/*" hidden>
+  <!-- ============ 入口：一张图，两个动作 ============ -->
+  <section id="pickCard" class="card">
+    <div class="drop" id="pickDrop" role="button" tabindex="0">
+      <input type="file" id="pickFile" accept="image/*" hidden>
       <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="8.5" cy="8.5" r="1.6"/>
         <path d="M21 15.5l-4.5-4.5L7 20.5"/>
       </svg>
-      <div><strong>拖入图片</strong> 或 <span class="link">点击选择</span> · 也可直接 ⌘V 粘贴</div>
+      <div><strong>拖入图片</strong> 或 <span class="link">点击选择</span> · 复制了图直接按 ⌘V</div>
       <small>JPG / PNG / WebP / GIF / BMP · 输出为无损 PNG</small>
     </div>
 
-    <div id="encStage" hidden>
-      <div class="grid2">
-        <figure class="prev">
-          <div class="ph"><img id="encImgSrc" alt="原图"></div>
-          <figcaption><b>原图</b><span id="encMeta"></span></figcaption>
-        </figure>
-        <figure class="prev">
-          <div class="ph checker">
-            <img id="encImgOut" alt="置乱结果">
-            <div class="empty" id="encOutEmpty">待生成</div>
-          </div>
-          <figcaption><b>置乱结果</b><span id="encOutMeta"></span></figcaption>
-        </figure>
-      </div>
-
-      <div class="ratio">
-        <div class="ratio-head">
-          <span>打乱强度</span>
-          <b id="encRatioVal">100%</b>
+    <div id="pickStage" hidden>
+      <div class="picked">
+        <div class="thumb">
+          <img id="pickThumb" alt="">
+          <button class="x" id="pickClear" type="button" title="移除这张图" aria-label="移除这张图">✕</button>
         </div>
-        <input type="range" id="encRatio" min="1" max="100" step="1" value="100">
-        <small id="encRatioHint">几乎全毁：肉眼看与 100% 没区别 · 实际约 100% 像素会被改写</small>
-      </div>
-
-      <div class="row">
-        <label class="field">
-          <span>口令（可选）</span>
-          <input type="password" id="encPw" placeholder="留空：密钥写进图里，任何人都能还原" autocomplete="off">
-        </label>
-        <label class="chk"><input type="checkbox" id="encVerify" checked> 生成后校验可逆性</label>
-      </div>
-
-      <div class="actions">
-        <button class="btn primary" id="encRun">生成置乱图</button>
-        <button class="btn ghost" id="encDown" hidden>下载 PNG</button>
-        <button class="btn ghost" id="encAgain" hidden>新窗口查看</button>
-        <button class="btn ghost" id="encReset">换一张</button>
-      </div>
-
-      <div class="progress" id="encProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
-      <div class="stats" id="encStats" hidden></div>
-
-      <div class="keybox" id="encKeyBox" hidden>
-        <div class="kh">
-          <span>密钥串（已写入图片元数据，可另存备份）</span>
-          <button class="btn ghost small" id="encCopy">复制</button>
+        <div class="pin">
+          <b id="pickName"></b>
+          <span id="pickInfo"></span>
+          <em id="pickHint"></em>
         </div>
-        <code id="encKeyStr"></code>
+      </div>
+      <div class="modes">
+        <button class="mode" id="modeEnc" aria-expanded="false">
+          <b>打乱这张图</b>
+          <span>搅成噪声，之后能逐像素还原</span>
+        </button>
+        <button class="mode" id="modeDec" aria-expanded="false">
+          <b>还原这张图</b>
+          <span>它是本工具生成的置乱图</span>
+        </button>
       </div>
     </div>
-  </section>
 
-  <!-- ================= 还原 ================= -->
-  <section id="tab-dec" class="card" hidden>
-    <div class="drop" id="decDrop" role="button" tabindex="0">
-      <input type="file" id="decFile" accept=".png,image/png" hidden>
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 16V4"/><path d="M7.5 8.5L12 4l4.5 4.5"/>
-        <path d="M4 15v3.5A1.5 1.5 0 005.5 20h13a1.5 1.5 0 001.5-1.5V15"/>
-      </svg>
-      <div><strong>拖入置乱图</strong> 或 <span class="link">点击选择</span> · 也可直接 ⌘V 粘贴</div>
-      <small>请使用本工具生成的 PNG（元数据必须完整）</small>
+    <!-- ================= 打乱（在这张卡里展开） ================= -->
+    <div id="tab-enc" class="pane" hidden>
+      <div id="encStage" hidden>
+        <div class="grid2">
+          <figure class="prev">
+            <div class="ph"><img id="encImgSrc" alt="原图"></div>
+            <figcaption><b>原图</b><span id="encMeta"></span></figcaption>
+          </figure>
+          <figure class="prev">
+            <div class="ph checker">
+              <img id="encImgOut" alt="置乱结果">
+              <div class="empty" id="encOutEmpty">待生成</div>
+            </div>
+            <figcaption><b>置乱结果</b><span id="encOutMeta"></span></figcaption>
+          </figure>
+        </div>
+
+        <div class="ratio">
+          <div class="ratio-head">
+            <span>打乱强度</span>
+            <b id="encRatioVal">100%</b>
+          </div>
+          <input type="range" id="encRatio" min="1" max="100" step="1" value="100">
+          <small id="encRatioHint">几乎全毁：肉眼看与 100% 没区别 · 实际约 100% 像素会被改写</small>
+        </div>
+
+        <div class="row">
+          <label class="field">
+            <span>口令（可选）</span>
+            <input type="password" id="encPw" placeholder="留空：密钥写进图里，任何人都能还原" autocomplete="off">
+          </label>
+          <label class="chk"><input type="checkbox" id="encVerify" checked> 生成后校验可逆性</label>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" id="encRun">生成置乱图</button>
+          <button class="btn ghost" id="encDown" hidden>下载 PNG</button>
+          <button class="btn ghost" id="encCopyImg" hidden>复制图片</button>
+          <button class="btn ghost" id="encAgain" hidden>新窗口查看</button>
+          <button class="btn ghost" id="encTry" hidden>试还原</button>
+        </div>
+
+        <div class="progress" id="encProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
+        <div class="stats" id="encStats" hidden></div>
+
+        <p class="rescue" id="encRescue" hidden>
+          <span id="encRescueLead"></span><button type="button" class="linkbtn" id="encRescueOpen" aria-expanded="false" aria-controls="encKeyBox"></button>
+        </p>
+
+        <div class="keybox" id="encKeyBox" hidden>
+          <div class="kh">
+            <span id="encKeyTitle">元数据备份</span>
+            <span class="kh-act">
+              <button class="btn ghost small" id="encCopy">复制</button>
+              <button class="btn ghost small" id="encKeyToggle" aria-expanded="false" aria-controls="encKeyStr">查看</button>
+            </span>
+          </div>
+          <p class="knote" id="encKeyNote"></p>
+          <code id="encKeyStr" hidden></code>
+        </div>
+      </div>
     </div>
 
-    <div id="decStage" hidden>
-      <div class="grid2">
-        <figure class="prev">
-          <div class="ph checker"><img id="decImgSrc" alt="置乱图"></div>
-          <figcaption><b>置乱图</b><span id="decMeta"></span></figcaption>
-        </figure>
-        <figure class="prev">
-          <div class="ph">
-            <img id="decImgOut" alt="还原结果">
-            <div class="empty" id="decOutEmpty">待还原</div>
-          </div>
-          <figcaption><b>还原结果</b><span></span></figcaption>
-        </figure>
-      </div>
+    <!-- ================= 还原（同样在这张卡里展开） ================= -->
+    <div id="tab-dec" class="pane" hidden>
+      <div id="decStage" hidden>
+        <div class="grid2">
+          <figure class="prev">
+            <div class="ph checker"><img id="decImgSrc" alt="置乱图"></div>
+            <figcaption><b>置乱图</b><span id="decMeta"></span></figcaption>
+          </figure>
+          <figure class="prev">
+            <div class="ph">
+              <img id="decImgOut" alt="还原结果">
+              <div class="empty" id="decOutEmpty">待还原</div>
+            </div>
+            <figcaption><b>还原结果</b><span></span></figcaption>
+          </figure>
+        </div>
 
-      <div class="row" id="decPwRow" hidden>
-        <label class="field">
-          <span>口令</span>
-          <input type="password" id="decPw" placeholder="加密时设置的口令" autocomplete="off">
-        </label>
-      </div>
+        <div class="row" id="decPwRow" hidden>
+          <label class="field">
+            <span>口令</span>
+            <input type="password" id="decPw" placeholder="加密时设置的口令" autocomplete="off">
+          </label>
+        </div>
 
-      <div class="warn" id="decNoMeta" hidden>
-        没有找到内嵌元数据（可能被重新压缩/截图过）。请把加密时备份的密钥串粘贴到下面。
-      </div>
-      <div class="row" id="decKeyRow" hidden>
-        <label class="field">
-          <span>密钥串</span>
-          <textarea id="decKeyInput" placeholder="粘贴以 eyJ 开头的密钥串"></textarea>
-        </label>
-      </div>
+        <div class="warn" id="decNoMeta" hidden>
+          这张图里没有本工具的标记。如果它只是被别的工具重新保存过、标记被剥掉了，
+          把加密时保存的那串字符粘贴到下面可以还原。
+          <b>如果它被微信压缩过、截过图或转成了 JPG，那已经救不回来了</b>，请找原始 PNG。
+        </div>
+        <div class="row" id="decKeyRow" hidden>
+          <label class="field">
+            <span>加密时保存的那串字符</span>
+            <textarea id="decKeyInput" placeholder="粘贴以 eyJ 开头的那一串"></textarea>
+          </label>
+        </div>
 
-      <div class="actions">
-        <button class="btn primary" id="decRun">开始还原</button>
-        <button class="btn ghost" id="decDown" hidden>下载 PNG</button>
-        <button class="btn ghost" id="decReset">换一张</button>
-      </div>
+        <div class="actions">
+          <button class="btn primary" id="decRun">开始还原</button>
+          <button class="btn ghost" id="decDown" hidden>下载 PNG</button>
+          <button class="btn ghost" id="decCopyImg" hidden>复制图片</button>
+          <button class="btn ghost" id="decAgain" hidden>新窗口查看</button>
+        </div>
 
-      <div class="progress" id="decProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
-      <div class="stats" id="decStats" hidden></div>
+        <div class="progress" id="decProg" hidden><div class="bar"><i></i></div><span class="pct">0%</span></div>
+        <div class="stats" id="decStats" hidden></div>
+      </div>
     </div>
   </section>
 
@@ -384,6 +475,7 @@
       </div>
       <ul>
         <li><b>打乱强度是什么？</b> 强度越低，发起"搬家"的像素越少（密度取强度的平方），画面只是局部破碎、轮廓还在；强度越高，几乎每个像素都参与，整幅图彻底变成噪声。关键点：参与搬家的像素不限对手，它会跟全图任意位置的像素换色，所以<strong>不存在"整块原样保留"的像素</strong> —— 这正是早期版本 95% 还能看出轮廓的原因（那 5% 原样像素被眼睛拼成了一张模糊的原图）。</li>
+        <li><b>怎么知道真的解对了？</b> 生成时会把原图像素算成一个指纹，和密钥一起存进元数据。还原时先验钥匙、再验图：只有两样都对上才算成功。拿一把合法钥匙去解一张不相干的图（比如误传了一张普通照片），会被指纹明确拦下，而不是吐出一片噪声还说"还原完成"。指纹里掺了密钥，所以别人也没法拿候选原图反推确认这张噪声图是什么。</li>
         <li><b>为什么可逆？</b> 交换的逆是交换本身，异或的逆是异或本身。加密与解密用的是同一条密钥流，只是执行顺序相反。</li>
         <li><b>密钥从哪来？</b> 口令 + 随机盐 → PBKDF2-HMAC-SHA256 20 万次迭代 → 32 字节主密钥。留空口令时改用一次性随机密钥，写进图片元数据，所以那张图自己就能还原。</li>
         <li><b>为什么输出必须 PNG？</b> JPG 是有损压缩，重编码会把密文改掉一个 bit，还原就再也对不上了。本工具自己写 PNG（8bit RGBA + 非压缩数据块），避开浏览器 canvas 对半透明像素的预乘舍入误差。</li>
@@ -1167,17 +1259,185 @@
     return C.sha256(buf).subarray(0, 6);
   };
 
+  // 像素指纹：把「原图像素」和密钥一起摘要一次，取 8 字节写进元数据。
+  // tagOf 只证明「钥匙对」，指纹才证明「图对」——两者分开，报错才分得清是口令错了还是图不对。
+  // 掺入 key 是必须的：裸哈希会让持图者拿一张候选原图算一遍就能确认这张噪声图是什么。
+  const FP_DOMAIN = new TextEncoder().encode('wb-pixels');
+  const fpOf = (key, w, h, px) => {
+    const inner = C.sha256(px);            // 唯一一次全量遍历，12MP 实测约 0.25s
+    const buf = new Uint8Array(key.length + FP_DOMAIN.length + 8 + inner.length);
+    buf.set(key, 0);
+    buf.set(FP_DOMAIN, key.length);
+    const dv = new DataView(buf.buffer, key.length + FP_DOMAIN.length, 8);
+    dv.setUint32(0, w); dv.setUint32(4, h);
+    buf.set(inner, key.length + FP_DOMAIN.length + 8);
+    return C.sha256(buf).subarray(0, 8);
+  };
+
   function statCard(label, value, cls) {
     return '<div class="stat"><span>' + label + '</span><b class="' + (cls || '') + '">' + value + '</b></div>';
   }
 
-  /* ----------------------------- 标签页 ----------------------------- */
-  document.querySelectorAll('.tab').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t === tab));
-      $('#tab-enc').hidden = tab.dataset.tab !== 'enc';
-      $('#tab-dec').hidden = tab.dataset.tab !== 'dec';
+  /* ------------------- 入口：一张图，两个动作 ---------------------- */
+  let pickedFile = null;
+  let pickedIsPng = false;
+  let pickToken = 0;
+  let modeBusy = false;
+
+  const PANE = { enc: '#tab-enc', dec: '#tab-dec' };
+  const MODE_BTN = { enc: '#modeEnc', dec: '#modeDec' };
+  const modeSub = {};          // 记住两个按钮的原始副标题
+
+  /* 展开/收起动作区。传 null = 回到「只有一张图，等你选动作」。
+     这不是换页：入口卡一直在，只是往下长出一块。 */
+  function openPane(which) {
+    ['enc', 'dec'].forEach((k) => {
+      $(PANE[k]).hidden = k !== which;
+      const btn = $(MODE_BTN[k]);
+      const span = btn.querySelector('span');
+      if (modeSub[k] === undefined) modeSub[k] = span.textContent;
+      btn.classList.toggle('active', k === which);
+      btn.setAttribute('aria-expanded', k === which ? 'true' : 'false');
+      span.textContent = k === which ? '已展开 · 再点一下收起' : modeSub[k];
     });
+    $('#pickCard').classList.toggle('expanded', !!which);
+    if (which) $(PANE[which]).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  const showPick = () => openPane(null);
+
+  function probeImage(file) {
+    return new Promise((res) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => res({ w: img.naturalWidth, h: img.naturalHeight, url });
+      img.onerror = () => { URL.revokeObjectURL(url); res(null); };
+      img.src = url;
+    });
+  }
+
+  async function pickFile(file) {
+    if (!file) return;
+    if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '')) {
+      toast('请选择图片文件', 'err'); return;
+    }
+    const token = ++pickToken;
+    pickedFile = file;
+    // 换图 = 两套流程一起作废。重置必须在 await 之前做完，否则上一张图的结果
+    // 会留在已经展开的动作区里，而且后面的 await 也不能盖掉用户刚点的选择。
+    resetEnc();
+    resetDec();
+    showPick();
+
+    // 廉价探测：只读一遍字节，判断是不是本工具生成的置乱图。
+    // 注意这只是「建议」，最终由用户点按钮决定——截图过的置乱图没有元数据，
+    // 和普通照片在技术上无法区分，猜错比不猜更糟。
+    let isPng = false, hasMeta = false;
+    try {
+      const buf = new Uint8Array(await file.arrayBuffer());
+      isPng = C.isPng(buf);
+      hasMeta = isPng && !!C.pngGetText(buf, 'wbenc');
+    } catch (e) { /* 后面的流程会给出具体错误 */ }
+    if (token !== pickToken) return;          // 期间又选了别的图
+
+    const size = await probeImage(file);
+    if (token !== pickToken) return;
+    pickedIsPng = isPng;
+
+    if (size) $('#pickThumb').src = size.url;
+    $('#pickName').textContent = file.name || '剪贴板图片';
+    $('#pickInfo').textContent =
+      (size ? size.w + ' × ' + size.h + ' · ' : '') + C.humanBytes(file.size);
+
+    const hint = $('#pickHint');
+    const decBtn = $('#modeDec'), encBtn = $('#modeEnc');
+    hint.className = '';
+    decBtn.disabled = false;
+    decBtn.classList.remove('suggest');
+    encBtn.classList.remove('suggest');
+
+    if (hasMeta) {
+      hint.textContent = '检测到本工具写入的标记 · 可以还原';
+      decBtn.classList.add('suggest');
+    } else if (isPng) {
+      hint.textContent = '没有本工具标记：可能是普通图片，也可能是被截图/压缩过的置乱图';
+      hint.className = 'warn';
+    } else {
+      hint.textContent = '这不是 PNG，只能打乱 · 还原需要本工具输出的 PNG';
+      hint.className = 'warn';
+      decBtn.disabled = true;
+    }
+
+    $('#pickStage').hidden = false;
+    $('#pickDrop').hidden = true;    // 有图之后，大的拖放区收起，换成缩略图右上角的「换一张」
+    $('#pickFile').value = '';       // 允许再次选同一个文件
+  }
+
+  // 选好动作再把图交给对应的流程；加载期间锁住两个按钮，避免重复点击互相覆盖
+  async function chooseMode(which) {
+    if (!pickedFile || modeBusy) return;
+    // 已经装过内容就直接展开，不重新解码——折叠一下不该把算好的结果弄丢
+    if (which === 'enc' ? state.enc.file : state.dec.file) {
+      openPane(which);
+      return;
+    }
+    modeBusy = true;
+    $('#modeEnc').disabled = true;
+    $('#modeDec').disabled = true;
+    try {
+      const ok = which === 'enc' ? await pickEncFile(pickedFile) : await pickDecFile(pickedFile);
+      if (ok) openPane(which); else openPane(null);
+    } finally {
+      modeBusy = false;
+      $('#modeEnc').disabled = false;
+      $('#modeDec').disabled = !pickedIsPng;
+    }
+  }
+
+  // 点已展开的那个 = 收起；点另一个 = 直接换过去。没有「返回」按钮。
+  $('#modeEnc').addEventListener('click', () => {
+    if ($('#modeEnc').classList.contains('active')) openPane(null);
+    else chooseMode('enc');
+  });
+  $('#modeDec').addEventListener('click', () => {
+    if ($('#modeDec').classList.contains('active')) openPane(null);
+    else chooseMode('dec');
+  });
+
+  const pickCard = $('#pickCard');
+  const pickDrop = $('#pickDrop');
+  pickDrop.addEventListener('click', () => $('#pickFile').click());
+  pickDrop.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#pickFile').click(); }
+  });
+  $('#pickClear').addEventListener('click', () => {
+    pickedFile = null;
+    pickedIsPng = false;
+    pickToken++;                       // 作废还在路上的探测结果
+    resetEnc();                        // 未下载的结果一并丢弃，避免和下一张图混在一起
+    resetDec();
+    $('#pickThumb').removeAttribute('src');
+    $('#pickStage').hidden = true;
+    $('#pickDrop').hidden = false;     // 回到空态，重新拖一张
+    openPane(null);
+  });
+  $('#pickFile').addEventListener('change', (e) => pickFile(e.target.files[0]));
+
+  // 整张卡都是投放区：有图之后也可以直接拖一张新的进来换掉，不必先点「换一张」
+  let dragDepth = 0;
+  pickCard.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (++dragDepth === 1) pickCard.classList.add('dropping');
+  });
+  pickCard.addEventListener('dragover', (e) => e.preventDefault());
+  pickCard.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    if (--dragDepth <= 0) { dragDepth = 0; pickCard.classList.remove('dropping'); }
+  });
+  pickCard.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragDepth = 0;
+    pickCard.classList.remove('dropping');
+    pickFile(e.dataTransfer.files && e.dataTransfer.files[0]);
   });
 
   /* ------------------------ 打乱强度滑杆 ---------------------------- */
@@ -1206,32 +1466,75 @@
     ratioTimer = setTimeout(() => { generateEncrypt({ verify: false, auto: true }); }, 260);
   });
 
-  /* ----------------------------- 加密 ------------------------------- */
-  const encDrop = $('#encDrop');
+  /* ----------------------------- 打乱 ------------------------------- */
+  // 备份串是「写进图里那行标记」的副本，两种口令状态下的含义完全不同：
+  //   无口令 → 它本身就是钥匙，值得摆在明面上；
+  //   有口令 → 口令才是凭据，这串只在图片被无损重存、标记被清掉时才用得上，
+  //            摆在结果页会让人以为「有口令还要备份」，所以收成一行灰字。
+  function collapseKeyBox() {
+    $('#encKeyStr').hidden = true;
+    $('#encKeyToggle').textContent = '查看';
+    $('#encKeyToggle').setAttribute('aria-expanded', 'false');
+  }
+
+  const RESCUE_OPEN = '图片被别的工具重存过、打不开了？';
+
+  function toggleRescue(force) {
+    const box = $('#encKeyBox');
+    const open = typeof force === 'boolean' ? force : box.hidden;
+    box.hidden = !open;
+    $('#encRescueOpen').textContent = open ? '收起备份串' : RESCUE_OPEN;
+    $('#encRescueOpen').setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) toggleKeyBox(false);   // 先只露出说明，乱码仍然收着
+  }
+
+  function setKeyBox(mode) {
+    const withPw = mode === 'p';
+    if (withPw) {
+      $('#encKeyTitle').textContent = '这把钥匙在图里的副本';
+      $('#encKeyNote').innerHTML = '把它粘到还原页、加上口令就能还原。'
+        + '平时用不上——只有当这张图被别的工具无损重存、标记被清掉时才需要；'
+        + '<b>被微信压缩、截图、转成 JPG 都救不回</b>，那种情况只能找回当初下载的 PNG。';
+      $('#encRescueLead').textContent = '口令就是全部凭据，记住它就够了。';
+      $('#encRescueOpen').textContent = RESCUE_OPEN;
+      $('#encRescueOpen').setAttribute('aria-expanded', 'false');
+      $('#encRescue').hidden = false;
+      $('#encKeyBox').hidden = true;
+    } else {
+      $('#encKeyTitle').textContent = '这把钥匙就是解密凭据';
+      $('#encKeyNote').innerHTML = '没设口令，所以这串本身就是钥匙：谁拿到它和这张图，谁就能还原，<b>不要公开发出去</b>。'
+        + '图被无损重存、丢了标记时靠它还原；<b>被微信压缩、截图、转成 JPG 都救不回</b>。';
+      $('#encRescue').hidden = true;
+      $('#encKeyBox').hidden = false;
+    }
+    collapseKeyBox();
+  }
 
   function resetEnc() {
     state.enc = {
       file: null, imageData: null, hasAlpha: false, outBlob: null,
       keyStr: '', origSize: 0, cache: null, runId: state.enc.runId + 1, params: '', lastVerify: null
     };
-    $('#encFile').value = '';
     $('#encStage').hidden = true;
-    $('#encDrop').classList.remove('compact');
     $('#encStats').hidden = true;
     $('#encKeyBox').hidden = true;
+    $('#encRescue').hidden = true;
     $('#encProg').hidden = true;
     $('#encDown').hidden = true;
+    $('#encCopyImg').hidden = true;
     $('#encAgain').hidden = true;
+    $('#encTry').hidden = true;
     $('#encImgOut').removeAttribute('src');
     $('#encOutEmpty').hidden = false;
     $('#encOutMeta').textContent = '';
+    $('#encPw').value = '';
     syncRatioUI();
   }
 
   async function pickEncFile(file) {
-    if (!file) return;
-    if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
-      toast('请选择图片文件', 'err'); return;
+    if (!file) return false;
+    if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name || '')) {
+      toast('请选择图片文件', 'err'); return false;
     }
     try {
       const data = await decodeToImageData(file);
@@ -1247,11 +1550,13 @@
       $('#encImgSrc').src = URL.createObjectURL(file);
       $('#encMeta').textContent = data.width + ' × ' + data.height + ' · ' + C.humanBytes(file.size) + (state.enc.hasAlpha ? ' · 含透明' : '');
       $('#encStage').hidden = false;
-      $('#encDrop').classList.add('compact');
       $('#encStats').hidden = true;
       $('#encKeyBox').hidden = true;
+      $('#encRescue').hidden = true;
       $('#encDown').hidden = true;
+      $('#encCopyImg').hidden = true;
       $('#encAgain').hidden = true;
+      $('#encTry').hidden = true;
       $('#encOutEmpty').hidden = false;
       $('#encImgOut').removeAttribute('src');
       $('#encOutMeta').textContent = '';
@@ -1259,22 +1564,10 @@
 
       const n = data.width * data.height;
       if (n > 30e6) toast('这张图有 ' + (n / 1e6).toFixed(0) + ' 百万像素，处理会比较慢', 'info');
-    } catch (e) { toast(e.message, 'err'); }
+      return true;
+    } catch (e) { toast(e.message, 'err'); return false; }
   }
 
-  encDrop.addEventListener('click', () => $('#encFile').click());
-  encDrop.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#encFile').click(); }
-  });
-  $('#encFile').addEventListener('change', (e) => pickEncFile(e.target.files[0]));
-  ['dragenter', 'dragover'].forEach((ev) => encDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); encDrop.classList.add('over');
-  }));
-  ['dragleave', 'drop'].forEach((ev) => encDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); encDrop.classList.remove('over');
-  }));
-  encDrop.addEventListener('drop', (e) => pickEncFile(e.dataTransfer.files && e.dataTransfer.files[0]));
-  $('#encReset').addEventListener('click', resetEnc);
   $('#encPw').addEventListener('input', () => { state.enc.cache = null; state.enc.params = ''; });
 
   async function generateEncrypt(opts) {
@@ -1343,14 +1636,19 @@
         st.lastVerify = verified;
       }
 
-      // 4) 编码
-      setBar(prog, 0.98, '编码 PNG…');
+      // 4) 指纹 + 编码
+      setBar(prog, 0.97, '计算指纹…');
+      await new Promise((r) => setTimeout(r, 0));   // 先让进度条画出来，再跑那次全量摘要
+      if (stale()) return;
+      const fp = fpOf(cache.key, w, h, original);
+      setBar(prog, 0.99, '编码 PNG…');
       const header = {
         v: C.VERSION, m: cache.mode, it: cache.iters,
         s: C.bytesToB64(cache.salt), w: w, h: h,
         a: st.hasAlpha ? 1 : 0, r: C.PERM_ROUNDS,
         c: Math.round(strength * 1000),
-        t: C.bytesToB64(tagOf(cache.key))
+        t: C.bytesToB64(tagOf(cache.key)),
+        f: C.bytesToB64(fp)
       };
       const keyStr = C.bytesToB64(new TextEncoder().encode(JSON.stringify(header)));
       const png = C.encodePng(work, w, h, 'wbenc', keyStr);
@@ -1376,8 +1674,10 @@
       ].join('');
 
       $('#encDown').hidden = false;
+      $('#encCopyImg').hidden = false;
       $('#encAgain').hidden = false;
-      $('#encKeyBox').hidden = false;
+      $('#encTry').hidden = false;
+      setKeyBox(cache.mode);
       $('#encKeyStr').textContent = keyStr;
 
       setBar(prog, 1, '完成');
@@ -1407,36 +1707,157 @@
     if (state.enc.outBlob) openInNewTab(state.enc.outBlob);
   });
 
-  $('#encCopy').addEventListener('click', async () => {
+  // 一键往返：把刚生成的结果直接送进还原流程，当场看噪声变回原图。
+  // 这是整个工具最有说服力的一刻，不该让用户先下载、再切页、再找文件。
+  $('#encTry').addEventListener('click', async () => {
+    const st = state.enc;
+    if (!st.outBlob) return;
+    const f = new File([st.outBlob], baseName(st.file.name) + '.scrambled.png', { type: 'image/png' });
+    const pw = st.cache ? (st.cache.pw || '') : '';
+    resetDec();                 // 只重置还原侧，打乱的结果留在上面，随时还能回来下载
+    if (await pickDecFile(f)) {
+      openPane('dec');
+      $('#decPw').value = pw;      // 口令是同一条，不用再打一遍
+      $('#decRun').click();
+    }
+  });
+
+  function toggleKeyBox(force) {
+    const nextOpen = typeof force === 'boolean' ? force : $('#encKeyStr').hidden;
+    $('#encKeyStr').hidden = !nextOpen;
+    $('#encKeyToggle').textContent = nextOpen ? '收起' : '查看';
+    $('#encKeyToggle').setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+  }
+
+  // 复制走两条路：先试 Clipboard API（需要 https / 本机 / 页面有焦点），
+  // 失败再退回 textarea + execCommand。内嵌预览面板、局域网 http 打开时常被前者挡掉。
+  async function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) { /* 落到兜底 */ }
+    }
     try {
-      await navigator.clipboard.writeText($('#encKeyStr').textContent);
-      toast('密钥串已复制', 'ok');
-    } catch (e) { toast('复制失败，请手动选中复制', 'err'); }
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;padding:0;border:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  $('#encKeyToggle').addEventListener('click', () => toggleKeyBox());
+  $('#encRescueOpen').addEventListener('click', () => toggleRescue());
+
+  // 复制「图片」和复制「文字」是两套 API：只写 image/png，且必须在用户手势里
+  // 同步构造 ClipboardItem（Safari 尤其严格），所以先建对象再 await。
+  // 返回 { ok } 或 { ok:false, why, detail }，why 用来给用户一句准确的话，
+  // 而不是笼统的「浏览器拦住了」——预览面板里失败的原因和用户能做的补救都不一样。
+  async function copyImageBlob(blob) {
+    if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) {
+      return { ok: false, why: 'unsupported', detail: 'no ClipboardItem' };
+    }
+    // 嵌在预览面板里时，点按钮未必把焦点给到本页；先自己抢一次，能救掉大半失败。
+    if (!document.hasFocus()) {
+      try { window.focus(); } catch (e) { /* 抢不到就继续试 */ }
+      await new Promise((r) => setTimeout(r, 40));
+    }
+    const makers = [
+      () => new ClipboardItem({ 'image/png': blob }),
+      () => new ClipboardItem({ 'image/png': Promise.resolve(blob) })   // 老 Safari 只认 Promise 形式
+    ];
+    let last = '';
+    for (const make of makers) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          await navigator.clipboard.write([make()]);
+          return { ok: true };
+        } catch (e) {
+          last = (e && e.name ? e.name + ': ' : '') + ((e && e.message) || e);
+          // Chrome 在文档没焦点时一律拒绝（常见于嵌在预览面板里的 iframe）。
+          // 抢一次焦点再试同一写法，能救回一部分场景。
+          if (attempt === 0 && /focus/i.test(last)) {
+            try { window.focus(); } catch (e2) { /* 抢不到就算了 */ }
+            await new Promise((r) => setTimeout(r, 60));
+            continue;
+          }
+          break;   // 这条写法不成，换下一条
+        }
+      }
+    }
+    return { ok: false, why: /focus/i.test(last) ? 'focus' : 'denied', detail: last };
+  }
+
+  async function copyImage(blob, okMsg) {
+    if (!blob) { toast('还没有结果', 'err'); return; }
+    const r = await copyImageBlob(blob);
+    if (r.ok) { toast(okMsg, 'ok'); return; }
+    if (r.why === 'unsupported') {
+      toast('这个浏览器不支持写图片剪贴板：可以下载 PNG，或在结果图上右键「复制图片」', 'info');
+      return;
+    }
+    // 这里是「环境不放行」，不是工具坏了。给出面板里真正能走的两条路，
+    // 顺序按可靠性排：下载一定可用，新窗口里右键复制次之。
+    toast((r.why === 'focus'
+      ? '当前窗口没拿到焦点，浏览器拒绝写剪贴板：点一下页面空白处再点「复制图片」，或用「下载 PNG」'
+      : '这个预览面板不允许写剪贴板：请用「下载 PNG」，或点「新窗口查看」后右键图片复制'), 'info');
+  }
+
+  $('#encCopyImg').addEventListener('click', () => copyImage(state.enc.outBlob,
+    '已复制。粘贴出去的版本丢了图里的标记，经聊天工具还会被压缩 —— 要保真还原请用下载的 PNG'));
+
+  $('#decCopyImg').addEventListener('click', () => copyImage(state.dec.outBlob,
+    '已复制图片，可以直接粘到聊天或文档里'));
+
+  $('#encCopy').addEventListener('click', async () => {
+    const text = $('#encKeyStr').textContent;
+    if (await copyText(text)) {
+      toast('已复制，建议存到只有你能看到的地方', 'ok');
+      return;
+    }
+    // 两条路都不通：展开并替你选中，按一次 ⌘C / Ctrl+C 就完事
+    toggleRescue(true);
+    toggleKeyBox(true);
+    const box = $('#encKeyStr');
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(box);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } catch (e) { /* 选不中也还能手动选 */ }
+    toast('浏览器拦住了自动复制，已展开并选中，按 ⌘C 或 Ctrl+C 即可', 'info');
   });
 
   /* ----------------------------- 还原 ------------------------------- */
-  const decDrop = $('#decDrop');
-
   function resetDec() {
     state.dec = { file: null, bytes: null, header: null, outBlob: null, runId: state.dec.runId + 1 };
-    $('#decFile').value = '';
     $('#decStage').hidden = true;
-    $('#decDrop').classList.remove('compact');
     $('#decStats').hidden = true;
     $('#decProg').hidden = true;
     $('#decKeyRow').hidden = true;
     $('#decNoMeta').hidden = true;
     $('#decPwRow').hidden = true;
     $('#decDown').hidden = true;
+    $('#decCopyImg').hidden = true;
+    $('#decAgain').hidden = true;
     $('#decImgOut').removeAttribute('src');
     $('#decOutEmpty').hidden = false;
+    $('#decPw').value = '';
+    $('#decKeyInput').value = '';
   }
 
   async function pickDecFile(file) {
-    if (!file) return;
+    if (!file) return false;
     try {
       const buf = new Uint8Array(await file.arrayBuffer());
-      if (!C.isPng(buf)) { toast('请上传本工具生成的 PNG 文件', 'err'); return; }
+      if (!C.isPng(buf)) { toast('这张图不是 PNG：还原只支持本工具输出的 PNG', 'err'); return false; }
       state.dec.file = file;
       state.dec.bytes = buf;
       state.dec.outBlob = null;
@@ -1456,33 +1877,21 @@
       $('#decMeta').textContent = (w && h ? w + ' × ' + h + ' · ' : '') + C.humanBytes(file.size) +
         (header ? '' : ' · 未找到元数据');
       $('#decStage').hidden = false;
-      $('#decDrop').classList.add('compact');
       $('#decStats').hidden = true;
       $('#decOutEmpty').hidden = false;
       $('#decDown').hidden = true;
+      $('#decCopyImg').hidden = true;
+      $('#decAgain').hidden = true;
       $('#decImgOut').removeAttribute('src');
       $('#decKeyRow').hidden = !!header;
       $('#decPwRow').hidden = !(header && header.m === 'p');
       $('#decNoMeta').hidden = !!header;
 
       if (header && header.m === 'r') toast('这张图没设口令，直接点「开始还原」即可', 'info');
-      if (!header) toast('没找到元数据，请在下方粘贴加密时备份的密钥串', 'err');
-    } catch (e) { toast(e.message, 'err'); }
+      if (!header) toast('没找到标记，把加密时保存的那串字符粘贴到下面', 'err');
+      return true;
+    } catch (e) { toast(e.message, 'err'); return false; }
   }
-
-  decDrop.addEventListener('click', () => $('#decFile').click());
-  decDrop.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#decFile').click(); }
-  });
-  $('#decFile').addEventListener('change', (e) => pickDecFile(e.target.files[0]));
-  ['dragenter', 'dragover'].forEach((ev) => decDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); decDrop.classList.add('over');
-  }));
-  ['dragleave', 'drop'].forEach((ev) => decDrop.addEventListener(ev, (e) => {
-    e.preventDefault(); decDrop.classList.remove('over');
-  }));
-  decDrop.addEventListener('drop', (e) => pickDecFile(e.dataTransfer.files && e.dataTransfer.files[0]));
-  $('#decReset').addEventListener('click', resetDec);
 
   $('#decRun').addEventListener('click', async () => {
     const st = state.dec;
@@ -1497,8 +1906,14 @@
       let header = st.header;
       if (!header) {
         const pasted = $('#decKeyInput').value.trim();
-        if (!pasted) throw new Error('缺少密钥串：请粘贴加密时备份的密钥串');
-        header = JSON.parse(new TextDecoder().decode(C.b64ToBytes(pasted)));
+        if (!pasted) throw new Error('缺少那串字符：请粘贴加密时保存的内容');
+        try {
+          header = JSON.parse(new TextDecoder().decode(C.b64ToBytes(pasted)));
+        } catch (e) { throw new Error('这串字符读不出来，请确认整串都复制过来了'); }
+      }
+      if (!header || typeof header.w !== 'number' || typeof header.h !== 'number'
+          || !header.s || (header.m !== 'p' && header.m !== 'r')) {
+        throw new Error('这串字符不完整或格式不对，请确认整串都复制过来了');
       }
 
       setBar(prog, 0.05, '读取像素…');
@@ -1537,14 +1952,25 @@
         key = C.b64ToBytes(header.s);
       }
       if (header.t && C.bytesToB64(tagOf(key)) !== header.t) {
-        throw new Error('口令不正确，或文件已被修改');
+        throw new Error('口令或恢复码不正确');
       }
 
       setBar(prog, 0.2, '还原像素…');
       await C.unscramble(pixels, header.w * header.h, key, hasAlpha, rounds, strength, (f) => {
-        if (!stale()) setBar(prog, 0.2 + f * 0.75, '还原像素…');
+        if (!stale()) setBar(prog, 0.2 + f * 0.72, '还原像素…');
       });
       if (stale()) return;
+
+      // 钥匙过了，还要过指纹：这一票决定「图对不对」
+      setBar(prog, 0.93, '校验指纹…');
+      await new Promise((r) => setTimeout(r, 0));
+      if (stale()) return;
+      const fpOk = header.f
+        ? C.bytesToB64(fpOf(key, header.w, header.h, pixels)) === header.f
+        : null;
+      if (fpOk === false) {
+        throw new Error('指纹不匹配：这张图不是该钥匙对应的置乱图，多半是截图或压缩过的副本，请改用原始 PNG');
+      }
 
       setBar(prog, 0.97, '编码 PNG…');
       const png = C.encodePng(pixels, header.w, header.h, null, null);
@@ -1554,17 +1980,20 @@
       $('#decImgOut').src = URL.createObjectURL(blob);
       $('#decOutEmpty').hidden = true;
       $('#decDown').hidden = false;
+      $('#decCopyImg').hidden = false;
+      $('#decAgain').hidden = false;
       $('#decStats').hidden = false;
       $('#decStats').innerHTML = [
         statCard('尺寸', header.w + ' × ' + header.h),
         statCard('打乱强度', (strength * 100).toFixed(0) + '%'),
-        statCard('透明通道', hasAlpha ? '已还原' : '不透明'),
+        statCard('指纹校验', fpOk === null ? '无指纹' : '与原件一致 ✓', fpOk ? 'good' : ''),
         statCard('文件体积', C.humanBytes(blob.size))
       ].join('');
 
       setBar(prog, 1, '完成');
       setTimeout(() => { if (!stale()) prog.hidden = true; }, 500);
-      toast('已还原，可在线查看或下载', 'ok');
+      toast(fpOk ? '已还原，指纹校验通过' : '已还原，但这张图没有指纹，无法校验结果',
+        fpOk ? 'ok' : 'info');
     } catch (e) {
       toast(e.message || String(e), 'err');
       prog.hidden = true;
@@ -1579,18 +2008,38 @@
     download(st.outBlob, baseName(st.file.name).replace(/\.scrambled$/, '') + '.restored.png');
   });
 
+  $('#decAgain').addEventListener('click', () => {
+    if (state.dec.outBlob) openInNewTab(state.dec.outBlob);
+  });
+
   /* --------------------------- 粘贴支持 ----------------------------- */
   document.addEventListener('paste', (e) => {
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const it of items) {
+    const cd = e.clipboardData;
+    if (!cd) return;
+    // 在口令框、备份串框里粘贴时不要抢
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+
+    for (const it of cd.items || []) {
       if (it.type && it.type.indexOf('image/') === 0) {
         const f = it.getAsFile();
         if (!f) continue;
-        if (!$('#tab-dec').hidden) pickDecFile(f); else pickEncFile(f);
+        // 粘贴 = 换一张图，不管你当时是不是在看结果。两个动作区会一起收起等重选。
+        pickFile(f);
         e.preventDefault();
         return;
       }
+    }
+
+    // 剪贴板里没有图片。静默失败最容易让人以为工具坏了，这里必须说一句。
+    const types = Array.from(cd.types || []);
+    if (!types.length) return;
+    if (types.indexOf('Files') >= 0) {
+      toast('剪贴板里是文件，不是图片：直接把文件拖进上面的框，或点框选文件', 'info');
+    } else if (types.indexOf('text/uri-list') >= 0 || types.indexOf('text/html') >= 0) {
+      toast('复制的是图片地址或网页链接，不是图片本身：在图片上右键选「复制图片」，再按 ⌘V', 'info');
+    } else {
+      toast('剪贴板里没有图片：确认复制的是图片本身，再按 ⌘V', 'info');
     }
   });
 
